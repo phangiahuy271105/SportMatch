@@ -1,5 +1,6 @@
 # Visual Studio
 .vs/
+.vscode/
 *.user
 *.suo
 
@@ -7,6 +8,11 @@
 **/bin/
 **/obj/
 .artifacts/
+**/TestResults/
+*.trx
+coverage*.xml
+coverage*.json
+**/publish/
 
 # Runtime-only data
 SportMatch.Web/App_Data/
@@ -18,8 +24,11 @@ sportmatch-run*.pid
 *.mdf
 *.ldf
 *.bak
+*.db
+*.sqlite
 
 # Environment and local secrets
 .env
 .env.*
 appsettings.Local.json
+*.pfx
