@@ -1,0 +1,11 @@
+@model MatchManageViewModel
+@{ ViewData["Title"] = "Quản lý kèo"; }
+@section Styles { <link rel="stylesheet" href="~/css/match-manage.css" asp-append-version="true" /> }
+<section class="match-manage-page shell">
+    <a class="back-link" asp-action="Index">← Về danh sách kèo</a>
+    <header class="manage-hero"><div><span class="kicker">KÈO @Model.Match.MatchCode</span><h1>@Model.Match.Title</h1><p>@Model.Match.VenueName · @Model.Match.MatchDate.ToString("dd/MM/yyyy") · @Model.Match.TimeRange</p><form asp-action="CloseOwned" method="post"><input type="hidden" name="matchCode" value="@Model.Match.MatchCode" /><button class="close-owned-button">Đóng kèo này</button></form></div><div><strong>@Model.Match.AvailableSpots</strong><span>vị trí còn lại</span></div></header>
+    @if (TempData["MatchError"] is string error) { <div class="form-error">@error</div> }
+    <div class="manage-heading"><div><span class="kicker">YÊU CẦU THAM GIA</span><h2>Duyệt người chơi</h2></div><p>Thông tin liên hệ chỉ dùng để kết nối sau khi hoàn tất đặt cọc.</p></div>
+    @if (Model.Requests.Count == 0) { <div class="manage-empty">Chưa có ai gửi yêu cầu tham gia.</div> }
+    else { <div class="request-list">@foreach (var request in Model.Requests) { <article class="request-card"><div class="request-avatar">@request.ApplicantName[..1].ToUpperInvariant()</div><div><h3>@request.ApplicantName</h3><p>@request.PhoneNumber · Cọc @request.DepositAmount.ToString("N0")đ</p><span>@request.Status @if(request.HoldExpiresAt is not null) { <text>· đến @request.HoldExpiresAt.Value.ToString("HH:mm")</text> }</span></div>@if(request.Status == "Chờ duyệt") { <div class="request-actions"><form asp-action="Review" method="post"><input type="hidden" name="matchCode" value="@Model.Match.MatchCode" /><input type="hidden" name="requestCode" value="@request.RequestCode" /><input type="hidden" name="decision" value="accept" /><button class="accept-button">Chấp nhận</button></form><form asp-action="Review" method="post"><input type="hidden" name="matchCode" value="@Model.Match.MatchCode" /><input type="hidden" name="requestCode" value="@request.RequestCode" /><input type="hidden" name="decision" value="reject" /><button class="reject-button">Từ chối</button></form></div> }</article> }</div> }
+</section>

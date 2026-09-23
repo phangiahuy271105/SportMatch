@@ -1,0 +1,61 @@
+@inject Microsoft.Extensions.Options.IOptions<SportMatch.Web.Options.PaymentSettings> PaymentOptions
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#06234a" />
+    <meta name="description" content="SportMatch giúp bạn tìm sân, đặt lịch và ghép đội thể thao tại TP.HCM." />
+    <title>@ViewData["Title"] - SportMatch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/contact-support.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/public-footer.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/legal-consent.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" asp-controller="Booking" asp-action="Index" aria-label="SportMatch - Trang chủ">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span class="brand-name">Sport<span>Match</span></span>
+        </a>
+        <nav class="desktop-nav" aria-label="Điều hướng chính">
+            <a class="nav-link" asp-controller="Booking" asp-action="Index">Đặt sân</a>
+            <a class="nav-link" asp-controller="Matchmaking" asp-action="Index">Tìm kèo</a>
+            <a class="nav-link" asp-controller="Matchmaking" asp-action="MyMatches">Kèo của tôi</a>
+            <a class="nav-link" asp-controller="Schedule" asp-action="Index">Lịch của tôi</a>
+        </nav>
+        <a class="guest-booking-link" asp-controller="Schedule" asp-action="Index">Tra cứu đặt sân →</a>
+    </header>
+    <main role="main">@RenderBody()</main>
+    <footer class="public-footer">
+        <div class="public-footer-inner">
+            <div><strong>SportMatch</strong><span>Chạm là có sân · Cần là có đội</span></div>
+            <nav aria-label="Thông tin pháp lý">
+                <a asp-controller="Legal" asp-action="Terms">Điều khoản</a>
+                <a asp-controller="Legal" asp-action="Privacy">Bảo mật</a>
+                <a asp-controller="Legal" asp-action="Cancellation">Hủy &amp; hoàn cọc</a>
+                @if (!string.IsNullOrWhiteSpace(PaymentOptions.Value.ZaloUrl))
+                {
+                    <a href="@PaymentOptions.Value.ZaloUrl" target="_blank" rel="noopener">Zalo hỗ trợ</a>
+                }
+            </nav>
+        </div>
+    </footer>
+    <nav class="mobile-nav" aria-label="Điều hướng di động">
+        <a asp-controller="Booking" asp-action="Index"><span>⌂</span>Trang chủ</a>
+        <a asp-controller="Matchmaking" asp-action="Index"><span>◎</span>Tìm kèo</a>
+        <a asp-controller="Matchmaking" asp-action="MyMatches"><span>◉</span>Kèo của tôi</a>
+        <a asp-controller="Schedule" asp-action="Index"><span>□</span>Lịch của tôi</a>
+    </nav>
+    <div class="toast-message" id="app-toast" role="status" aria-live="polite"><span class="toast-icon">✓</span><div><strong id="toast-title">Thành công</strong><small id="toast-body"></small></div></div>
+    @if (!string.IsNullOrWhiteSpace(PaymentOptions.Value.ZaloUrl))
+    {
+        <a class="zalo-support" href="@PaymentOptions.Value.ZaloUrl" target="_blank" rel="noopener" aria-label="Liên hệ SportMatch qua Zalo"><span>Zalo</span><strong>Hỗ trợ SportMatch</strong><small>0886 415 153</small></a>
+    }
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

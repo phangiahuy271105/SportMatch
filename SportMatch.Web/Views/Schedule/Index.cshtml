@@ -1,0 +1,38 @@
+@model ScheduleIndexViewModel
+@{
+    ViewData["Title"] = "Lịch của tôi";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/schedule.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/schedule-lookup.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/schedule-cancellation.css" asp-append-version="true" />
+}
+
+<section class="schedule-page shell">
+    <div class="schedule-heading"><div><span class="kicker">LỊCH CỦA TÔI</span><h1>Sẵn sàng cho trận tiếp theo</h1><p>Theo dõi các sân bạn đã đặt và trạng thái thanh toán.</p></div><a class="primary-button" asp-controller="Booking" asp-action="Index">+ Đặt thêm sân</a></div>
+    <form class="schedule-lookup" asp-action="Lookup" method="post">
+        <div><strong>Tìm lại lịch đặt sân</strong><p>Booking cũ hoặc đặt trên thiết bị khác? Nhập mã và số điện thoại đã đặt.</p></div>
+        <label>Mã đặt sân<input name="code" required maxlength="20" placeholder="SM…" /></label>
+        <label>Số điện thoại<input name="phone" required type="tel" /></label>
+        <button class="primary-button" type="submit">Tra cứu</button>
+    </form>
+    @if (TempData["LookupError"] is string error) { <p role="alert">@error</p> }
+    @if (TempData["ScheduleError"] is string scheduleError) { <div class="schedule-alert error" role="alert">@scheduleError</div> }
+    @if (TempData["ScheduleMessage"] is string scheduleMessage) { <div class="schedule-alert success">@scheduleMessage</div> }
+    @if (Model.Bookings.Count == 0)
+    {
+        <div class="schedule-empty"><span>□</span><h2>Bạn chưa có lịch đặt sân</h2><p>Chọn một sân phù hợp và lịch của bạn sẽ xuất hiện tại đây.</p><a class="primary-button" asp-controller="Booking" asp-action="Index">Tìm sân ngay</a></div>
+    }
+    else
+    {
+        <div class="booking-list">
+            @foreach (var booking in Model.Bookings)
+            {
+                <article class="schedule-card"><span class="schedule-accent"></span><div class="schedule-time"><strong>@booking.StartTime</strong><span>@booking.BookingDate.ToString("dd/MM/yyyy")</span></div><div class="schedule-main"><h2>@booking.VenueName</h2><p>@booking.CourtName · @booking.SlotCount giờ · Mã @booking.BookingCode</p><a asp-controller="Booking" asp-action="Payment" asp-route-code="@booking.BookingCode">Xem chi tiết đặt sân →</a>@if(booking.Status == "Yêu cầu hủy") { <p class="cancel-detail">Lý do: @booking.CancellationReason · Dự kiến hoàn @booking.RefundPercent%</p> }@if(booking.Status == "Đã hủy" && booking.RefundStatus is not null) { <p class="cancel-detail">@booking.RefundStatus @if(booking.RefundAmount > 0) { <text>· @booking.RefundAmount.ToString("N0")đ</text> }</p> }</div><div class="schedule-status"><span class="status-pill">@booking.Status</span><strong>@booking.Deposit.ToString("N0")đ cọc</strong></div>
+                @if (booking.CanCancel) { <details class="cancel-booking"><summary>Hủy lịch đặt</summary><p>@(booking.Status == "Đã xác nhận" ? $"Theo thời điểm hiện tại, mức hoàn dự kiến là {booking.EstimatedRefundPercent}% tiền cọc." : "Lịch chưa thanh toán sẽ được hủy ngay.")</p><form asp-action="Cancel" method="post"><input type="hidden" name="bookingCode" value="@booking.BookingCode" /><textarea name="reason" maxlength="500" required placeholder="Lý do bạn muốn hủy lịch…"></textarea><button type="submit">Gửi yêu cầu hủy</button></form></details> }
+                </article>
+            }
+        </div>
+    }
+</section>

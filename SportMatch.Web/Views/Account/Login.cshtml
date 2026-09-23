@@ -1,0 +1,27 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Đăng nhập quản trị";
+    Layout = "_AdminAuthLayout";
+}
+
+<section class="admin-login-grid">
+    <div class="admin-login-brand">
+        <img src="~/images/sportmatch-logo.jpg" alt="SportMatch" />
+        <span class="kicker">SPORTMATCH ADMIN</span>
+        <h1>Không gian vận hành<br />dành cho quản trị viên.</h1>
+        <p>Quản lý sân, lịch đặt và giao dịch tại một nơi.</p>
+        <a asp-controller="Booking" asp-action="Index">← Về trang đặt sân</a>
+    </div>
+    <div class="admin-login-card">
+        <h2>Đăng nhập quản trị</h2>
+        <p>Sử dụng tài khoản quản trị đã được cấp.</p>
+        <form action="@Url.Content("~/Admin/Login")" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+            <label asp-for="Identifier"><span>Email hoặc số điện thoại admin</span><input asp-for="Identifier" autocomplete="username" required /><small asp-validation-for="Identifier"></small></label>
+            <label asp-for="Password"><span>Mật khẩu</span><input asp-for="Password" autocomplete="current-password" required /><small asp-validation-for="Password"></small></label>
+            <label class="remember-row"><input asp-for="RememberMe" /><span>Ghi nhớ đăng nhập</span></label>
+            <button class="primary-button full-button" type="submit">Vào trang quản trị →</button>
+        </form>
+    </div>
+</section>

@@ -1,0 +1,6 @@
+@model IReadOnlyList<AdminCourtViewModel>
+@{ Layout = "_AdminLayout"; ViewData["Title"] = "Sân con & khung giờ"; }
+<section class="admin-page shell"><div class="admin-heading"><div><span class="kicker">SÂN CON &amp; KHUNG GIỜ</span><h1>@ViewData["VenueName"]</h1><a asp-action="Venues">← Danh sách cụm sân</a></div><a class="primary-button" asp-action="Court" asp-route-venueId="@ViewData["VenueId"]">+ Thêm sân con</a></div>
+<div class="admin-board admin-table-wrap"><table><thead><tr><th>Sân con</th><th>Môn / loại</th><th>Giờ thường</th><th>Giờ vàng</th><th></th></tr></thead><tbody>
+@foreach(var court in Model) { <tr><td>@court.Name</td><td>@court.SportName · @court.CourtType</td><td>@court.OffPeakPrice.ToString("N0")đ</td><td>@court.PeakPrice.ToString("N0")đ</td><td><a class="edit-button" asp-action="Court" asp-route-id="@court.Id" asp-route-venueId="@court.VenueComplexId">Sửa &amp; bật/tắt giờ</a></td></tr> }
+</tbody></table></div></section>

@@ -1,0 +1,45 @@
+@model PaymentViewModel
+@{
+    ViewData["Title"] = "Thanh toán đặt cọc";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/payment.css" asp-append-version="true" />
+}
+
+<section class="payment-page shell" data-payment-page data-payment-status="@Model.Booking.Status" data-status-url="@Url.Action("PaymentStatus", new { code = Model.Booking.BookingCode })">
+    <div class="payment-card">
+        <div class="payment-copy">
+            <span class="kicker">THANH TOÁN ĐẶT CỌC</span>
+            <h1>@(Model.Booking.Status == "Đã xác nhận" ? "Sân của bạn đã được xác nhận" : Model.Booking.Status == "Chờ thanh toán" ? "Quét QR để giữ sân" : "Thông tin đặt sân")</h1>
+            <p>Trạng thái: <strong>@Model.Booking.Status</strong></p>
+            <dl class="payment-details">
+                <div><dt>Mã booking</dt><dd>@Model.Booking.BookingCode</dd></div>
+                <div><dt>Sân</dt><dd>@Model.Booking.VenueName</dd></div>
+                <div><dt>Thời gian</dt><dd>@Model.Booking.BookingDate.ToString("dd/MM/yyyy") · @Model.Booking.StartTime</dd></div>
+                <div class="payment-total"><dt>Số tiền đặt cọc</dt><dd>@Model.Booking.Deposit.ToString("N0")đ</dd></div>
+                <div><dt>Ngân hàng</dt><dd>@Model.BankName · @Model.AccountNumber</dd></div>
+                <div><dt>Chủ tài khoản</dt><dd>@Model.AccountName</dd></div>
+            </dl>
+            <div class="payment-actions"><a class="primary-button" asp-controller="Schedule" asp-action="Index" asp-route-code="@Model.Booking.BookingCode">Xem booking này</a><a class="secondary-link" asp-action="Index">Quay lại tìm sân</a></div>
+        </div>
+        @if (Model.Booking.Status == "Chờ thanh toán")
+        {
+        <div class="qr-panel">
+            <span class="qr-label">VIETQR THANH TOÁN CỌC</span>
+            <img src="@Model.QrCodeUrl" alt="Mã VietQR thanh toán booking @Model.Booking.BookingCode" />
+            <strong>@Model.Booking.Deposit.ToString("N0")đ</strong>
+            <p>Nội dung: <b>@Model.TransferContent</b></p>
+            <small>QR hết hạn lúc @Model.ExpiresAt.ToString("HH:mm") · còn <strong id="payment-countdown" data-expires="@Model.ExpiresAt.ToString("O")">--:--</strong></small>
+            @if (Model.ZaloUrl is not null) { <a class="secondary-link" href="@Model.ZaloUrl" target="_blank" rel="noopener">Liên hệ Zalo hỗ trợ</a> }
+        </div>
+        }
+        else
+        {
+            <div class="qr-panel"><span class="qr-label">THÔNG TIN LỊCH ĐẶT</span><h2>@Model.Booking.Status</h2><p>@Model.Booking.CourtName</p><p>@Model.Booking.SlotCount giờ · @Model.Booking.StartTime</p><p>Khách đặt: @Model.Booking.CustomerName</p><a class="secondary-link" asp-controller="Schedule" asp-action="Index">Xem toàn bộ lịch của tôi →</a></div>
+        }
+    </div>
+    <div class="payment-card"><div class="payment-copy"><span class="kicker">CHÍNH SÁCH HỦY SÂN</span><h2>Minh bạch tiền cọc</h2><p>Hủy trước 24 giờ: hoàn 100%. Hủy từ 12–24 giờ: hoàn 50%. Hủy dưới 12 giờ hoặc không đến: mất cọc và trừ 0,5 điểm uy tín. Trường hợp mưa bão, ngập sân hoặc sự cố sân: hoàn 100%.</p></div></div>
+    <p class="demo-warning">Vui lòng không sửa số tiền hoặc nội dung chuyển khoản. Booking hết hiệu lực nếu quá thời gian giữ chỗ.</p>
+</section>
+@section Scripts { <script src="~/js/payment.js" asp-append-version="true"></script> }

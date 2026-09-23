@@ -1,0 +1,62 @@
+@model MatchmakingIndexViewModel
+@{
+    ViewData["Title"] = "Tìm kèo";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/matchmaking.css" asp-append-version="true" />
+}
+
+<section class="page-shell">
+    <div class="page-heading">
+        <div><span class="kicker">CỘNG ĐỒNG SPORTMATCH</span><h1>Tìm đúng người, chơi đúng chất</h1><p>Để lại họ tên và số điện thoại để đăng kèo hoặc gửi yêu cầu tham gia. Không cần tài khoản.</p></div>
+        <button class="primary-button" type="button" id="open-match-form">+ Đăng kèo mới</button>
+    </div>
+    <nav class="filter-row" aria-label="Lọc môn thể thao">
+        <a class="filter-chip @(Model.ActiveSport == "all" ? "active" : string.Empty)" asp-action="Index" asp-route-sport="all">Tất cả</a>
+        <a class="filter-chip @(Model.ActiveSport == "football" ? "active" : string.Empty)" asp-action="Index" asp-route-sport="football">Bóng đá</a>
+        <a class="filter-chip @(Model.ActiveSport == "badminton" ? "active" : string.Empty)" asp-action="Index" asp-route-sport="badminton">Cầu lông</a>
+        <a class="filter-chip @(Model.ActiveSport == "pickleball" ? "active" : string.Empty)" asp-action="Index" asp-route-sport="pickleball">Pickleball</a>
+        <a class="filter-chip @(Model.ActiveSport == "basketball" ? "active" : string.Empty)" asp-action="Index" asp-route-sport="basketball">Bóng rổ</a>
+    </nav>
+    @if (Model.OwnedMatches.Count > 0)
+    {
+        <section class="owned-matches"><div><span class="kicker">KÈO CỦA BẠN</span><h2>Quản lý yêu cầu tham gia</h2></div><div class="owned-match-list">@foreach (var owned in Model.OwnedMatches) { <a asp-action="Manage" asp-route-code="@owned.MatchCode"><strong>@owned.Title</strong><span>@owned.MatchDate.ToString("dd/MM") · @owned.StartTime</span>@if (owned.PendingRequests > 0) { <b>@owned.PendingRequests yêu cầu mới</b> }</a> }</div></section>
+    }
+    <details class="recover-panel"><summary>Khôi phục kèo hoặc yêu cầu đã tạo trên thiết bị khác</summary>@if (TempData["RecoverError"] is string recoverError) { <div class="form-error">@recoverError</div> }<div><form asp-action="RecoverHost" method="post"><strong>Quản lý kèo của tôi</strong><input name="matchCode" placeholder="Mã kèo MK…" required /><input name="phoneNumber" placeholder="Số điện thoại chủ kèo" required /><button type="submit">Mở quản lý</button></form><form asp-action="RecoverRequest" method="post"><strong>Xem yêu cầu tham gia</strong><input name="requestCode" placeholder="Mã yêu cầu TG…" required /><input name="phoneNumber" placeholder="Số điện thoại tham gia" required /><button type="submit">Kiểm tra</button></form></div></details>
+    <div class="match-layout">
+        <div class="match-list">
+            @foreach (var match in Model.Matches)
+            {
+                <article class="match-card">
+                    <div class="match-date"><span>THG @match.MatchDate.Month</span><strong>@match.MatchDate.Day.ToString("00")</strong></div>
+                    <div class="match-info"><span class="kicker">@match.SportName.ToUpperInvariant() · @match.District.ToUpperInvariant()</span><h2>@match.Title</h2><p>@match.VenueName · @match.TimeRange</p><div class="match-meta"><span>@match.Level</span><span>Còn @match.AvailableSpots chỗ</span><span>@match.CostPerPerson.ToString("N0")đ/người</span><span>Chủ kèo: @match.HostName</span></div></div>
+                    <form asp-action="Join" method="post" class="join-form">@Html.AntiForgeryToken()<input type="hidden" name="MatchId" value="@match.Id" /><input name="ApplicantName" aria-label="Họ tên người tham gia" placeholder="Họ tên" required /><input name="PhoneNumber" aria-label="Số điện thoại người tham gia" placeholder="Số điện thoại" required /><label class="policy-consent compact"><input type="checkbox" name="AcceptPolicy" value="true" required /><span>Đồng ý <a asp-controller="Legal" asp-action="Terms" target="_blank">điều khoản</a></span></label><button class="join-button" type="submit" disabled="@(match.AvailableSpots == 0)">@(match.AvailableSpots == 0 ? "Đã đủ người" : "Gửi yêu cầu")</button></form>
+                </article>
+            }
+        </div>
+        <aside class="trust-card"><span class="trust-icon">✓</span><h2>Kết nối bằng thông tin liên hệ</h2><p>Nhập đúng tên và số điện thoại để chủ kèo liên hệ. Hãy báo sớm nếu bạn thay đổi lịch chơi.</p></aside>
+    </div>
+</section>
+
+<div class="modal-backdrop is-hidden" id="match-form-modal" role="dialog" aria-modal="true" aria-labelledby="match-form-title">
+    <div class="modal form-modal">
+        <button class="modal-close" type="button" data-close-modal aria-label="Đóng">×</button><span class="kicker">TẠO KÈO MỚI</span><h2 id="match-form-title">Rủ mọi người cùng chơi</h2>
+        <form asp-action="Create" method="post" id="create-match-form">
+            @Html.AntiForgeryToken()
+            <div class="form-grid"><label asp-for="CreateForm.HostName"><span>Tên chủ kèo</span><input asp-for="CreateForm.HostName" name="HostName" autocomplete="name" /></label><label asp-for="CreateForm.PhoneNumber"><span>Số điện thoại</span><input asp-for="CreateForm.PhoneNumber" name="PhoneNumber" autocomplete="tel" /></label></div>
+            <label asp-for="CreateForm.Sport"><span>Môn thể thao</span><select asp-for="CreateForm.Sport" name="Sport"><option value="football">Bóng đá mini</option><option value="badminton">Cầu lông</option><option value="pickleball">Pickleball</option><option value="basketball">Bóng rổ</option><option value="tennis">Tennis</option><option value="volleyball">Bóng chuyền</option></select></label>
+            <label asp-for="CreateForm.VenueName"><span>Sân thi đấu</span><input asp-for="CreateForm.VenueName" name="VenueName" placeholder="Ví dụ: Sân KTX Khu B" /></label>
+            <div class="form-grid"><label asp-for="CreateForm.MatchDate"><span>Ngày chơi</span><input asp-for="CreateForm.MatchDate" name="MatchDate" type="date" /></label><label asp-for="CreateForm.StartTime"><span>Giờ bắt đầu</span><input asp-for="CreateForm.StartTime" name="StartTime" type="time" /></label></div>
+            <div class="form-grid"><label asp-for="CreateForm.NeededPlayers"><span>Số người cần thêm</span><input asp-for="CreateForm.NeededPlayers" name="NeededPlayers" type="number" min="1" max="20" /></label><label asp-for="CreateForm.Level"><span>Trình độ</span><select asp-for="CreateForm.Level" name="Level"><option value="Casual">Vui vẻ / Dưỡng sinh</option><option value="Intermediate">Phong trào / Bán chuyên</option><option value="Competitive">Thi đấu / Giải phủi</option></select></label></div>
+            <label asp-for="CreateForm.CostPerPerson"><span>Chi phí mỗi người</span><input asp-for="CreateForm.CostPerPerson" name="CostPerPerson" type="number" min="0" step="1000" /></label>
+            <p>Người tham gia cần được chủ kèo duyệt và đặt cọc 50% phần chia sân để khóa vị trí.</p>
+            <label class="policy-consent"><input type="checkbox" name="AcceptPolicy" value="true" required /><span>Tôi đồng ý với <a asp-controller="Legal" asp-action="Terms" target="_blank">Điều khoản sử dụng</a> và <a asp-controller="Legal" asp-action="Privacy" target="_blank">Chính sách bảo mật</a>.</span></label>
+            <div class="form-error is-hidden" id="match-form-error"></div><button class="primary-button full-button" type="submit">Đăng kèo</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/matchmaking.js" asp-append-version="true"></script>
+}

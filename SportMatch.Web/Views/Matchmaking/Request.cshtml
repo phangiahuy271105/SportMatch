@@ -1,0 +1,12 @@
+@model MatchRequestStatusViewModel
+@{ ViewData["Title"] = "Yêu cầu tham gia kèo"; }
+@section Styles { <link rel="stylesheet" href="~/css/match-request.css" asp-append-version="true" /> }
+<section class="request-status-page shell" data-request-code="@Model.RequestCode" data-status-url="@Url.Action("RequestStatus", new { code = Model.RequestCode })" data-current-status="@Model.Status">
+    <div class="request-status-card"><span class="kicker">YÊU CẦU @Model.RequestCode</span><h1>@Model.Status</h1><p>@Model.MatchTitle · @Model.VenueName</p><div class="request-match-info"><span>Ngày chơi<strong>@Model.MatchDate.ToString("dd/MM/yyyy")</strong></span><span>Giờ bắt đầu<strong>@Model.StartTime</strong></span><span>Tiền cọc 50%<strong>@Model.DepositAmount.ToString("N0")đ</strong></span></div>
+    @if (Model.Status == "Chờ duyệt") { <div class="status-message waiting">Chủ kèo đang xem yêu cầu. Trang sẽ tự cập nhật khi có kết quả.</div> }
+    @if (Model.Status == "Chờ thanh toán" && Model.QrCodeUrl is not null) { <div class="match-payment"><img src="@Model.QrCodeUrl" alt="QR thanh toán yêu cầu @Model.RequestCode" /><div><h2>Đặt cọc để khóa vị trí</h2><p>Chuyển đúng <strong>@Model.DepositAmount.ToString("N0")đ</strong> với nội dung <b>@Model.RequestCode</b>.</p><p>Còn lại: <strong id="match-payment-countdown" data-expires="@Model.ExpiresAt?.ToString("O")">--:--</strong></p></div></div> }
+    @if (Model.Status == "Đã xác nhận") { <div class="host-contact"><span>LIÊN HỆ CHỦ KÈO</span><h2>@Model.HostName</h2><a href="tel:@Model.HostPhone">☎ @Model.HostPhone</a><a href="https://zalo.me/@Model.HostPhone" target="_blank" rel="noopener">Mở Zalo →</a></div> }
+    @if (Model.Status is "Từ chối" or "Hết hạn") { <div class="status-message rejected">Vị trí chưa được khóa. Bạn có thể quay lại chọn một kèo khác.</div> }
+    <a class="back-link" asp-action="Index">← Xem các kèo khác</a></div>
+</section>
+@section Scripts { <script src="~/js/match-request.js" asp-append-version="true"></script> }

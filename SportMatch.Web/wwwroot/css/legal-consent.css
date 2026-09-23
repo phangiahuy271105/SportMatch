@@ -1,0 +1,4 @@
+.policy-consent { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0; color: #53657a; font-size: .84rem; line-height: 1.5; }
+.policy-consent input { width: 18px; height: 18px; margin: 1px 0 0; flex: 0 0 auto; accent-color: #0875d1; }
+.policy-consent a { color: #0965b7; font-weight: 700; }
+.policy-consent.compact { grid-column: 1 / -1; margin: 0; }

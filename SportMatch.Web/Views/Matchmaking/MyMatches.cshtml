@@ -1,0 +1,18 @@
+@model MyMatchesViewModel
+@{ ViewData["Title"] = "Kèo của tôi"; }
+@section Styles { <link rel="stylesheet" href="~/css/my-matches.css" asp-append-version="true" /> }
+<section class="my-matches-page shell">
+    <header class="my-matches-heading"><div><span class="kicker">KÈO CỦA TÔI</span><h1>Theo dõi mọi kèo đã tham gia</h1><p>Dữ liệu được ghi nhớ trên trình duyệt này, không cần đăng nhập.</p></div><a class="primary-button" asp-action="Index">+ Tìm hoặc đăng kèo</a></header>
+    @if (TempData["RecoverError"] is string recoverError) { <div class="form-error">@recoverError</div> }
+    <div class="match-account-grid">
+        <section class="match-account-panel"><div class="panel-title"><div><span class="kicker">TÔI LÀ CHỦ KÈO</span><h2>Kèo đã đăng</h2></div><span>@Model.HostedMatches.Count kèo</span></div>
+            @if (Model.HostedMatches.Count == 0) { <div class="match-account-empty"><span>◎</span><h3>Chưa đăng kèo nào</h3><p>Kèo bạn tạo trên trình duyệt này sẽ xuất hiện tại đây.</p></div> }
+            else { <div class="my-match-list">@foreach (var match in Model.HostedMatches) { <a asp-action="Manage" asp-route-code="@match.MatchCode"><div class="my-match-date"><strong>@match.MatchDate.Day.ToString("00")</strong><small>THG @match.MatchDate.Month</small></div><div><h3>@match.Title</h3><p>@match.StartTime · Mã @match.MatchCode</p>@if(match.PendingRequests > 0) { <b>@match.PendingRequests yêu cầu đang chờ duyệt</b> }</div><span class="my-status">@match.Status</span></a> }</div> }
+        </section>
+        <section class="match-account-panel"><div class="panel-title"><div><span class="kicker">TÔI THAM GIA</span><h2>Yêu cầu đã gửi</h2></div><span>@Model.JoinRequests.Count yêu cầu</span></div>
+            @if (Model.JoinRequests.Count == 0) { <div class="match-account-empty"><span>◇</span><h3>Chưa tham gia kèo nào</h3><p>Yêu cầu tham gia và trạng thái cọc sẽ được lưu tại đây.</p></div> }
+            else { <div class="my-match-list">@foreach (var request in Model.JoinRequests) { <a asp-action="RequestDetails" asp-route-code="@request.RequestCode"><div class="my-match-date"><strong>@request.MatchDate.Day.ToString("00")</strong><small>THG @request.MatchDate.Month</small></div><div><h3>@request.MatchTitle · @request.VenueName</h3><p>@request.StartTime · Mã @request.RequestCode</p>@if(request.Status == "Chờ thanh toán") { <b>Cần cọc @request.DepositAmount.ToString("N0")đ để giữ chỗ</b> }</div><span class="my-status">@request.Status</span></a> }</div> }
+        </section>
+    </div>
+    <details class="match-recovery"><summary>Không thấy kèo? Khôi phục từ thiết bị khác</summary><p>Nhập mã đã nhận và đúng số điện thoại đã dùng.</p><div><form asp-action="RecoverHost" method="post"><strong>Kèo tôi đã đăng</strong><input name="matchCode" placeholder="Mã MK…" required /><input name="phoneNumber" type="tel" placeholder="Số điện thoại chủ kèo" required /><button type="submit">Khôi phục kèo</button></form><form asp-action="RecoverRequest" method="post"><strong>Yêu cầu tôi đã gửi</strong><input name="requestCode" placeholder="Mã TG…" required /><input name="phoneNumber" type="tel" placeholder="Số điện thoại tham gia" required /><button type="submit">Khôi phục yêu cầu</button></form></div></details>
+</section>

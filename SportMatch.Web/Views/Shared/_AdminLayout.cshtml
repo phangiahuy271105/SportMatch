@@ -1,0 +1,38 @@
+@inject Microsoft.AspNetCore.Identity.UserManager<SportMatch.Web.Data.Entities.ApplicationUser> UserManager
+@{ var administrator = await UserManager.GetUserAsync(User); var action = ViewContext.RouteData.Values["action"]?.ToString(); }
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - SportMatch Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="admin-body">
+    <aside class="admin-sidebar">
+        <a class="admin-brand" asp-controller="Admin" asp-action="Index"><img src="~/images/sportmatch-logo.jpg" alt="SportMatch" /><span>Admin Center</span></a>
+        <nav aria-label="Điều hướng quản trị">
+            <p class="nav-caption">KHÔNG GIAN QUẢN TRỊ</p>
+            <a class="@(action == "Index" ? "active" : "")" asp-controller="Admin" asp-action="Index"><span>◫</span>Tổng quan</a>
+            <a class="@(action is "Venues" or "EditVenue" or "CreateVenue" or "Courts" or "Court" ? "active" : "")" asp-controller="Admin" asp-action="Venues"><span>⌂</span>Sân &amp; bảng giá</a>
+            <a class="@(action == "Bookings" ? "active" : "")" asp-controller="Admin" asp-action="Bookings"><span>▦</span>Quản lý đặt sân</a>
+            <a class="@(action == "Matches" ? "active" : "")" asp-controller="Admin" asp-action="Matches"><span>◎</span>Quản lý cáp kèo</a>
+            <a class="@(action == "Customers" ? "active" : "")" asp-controller="Admin" asp-action="Customers"><span>♙</span>Khách hàng &amp; liên hệ</a>
+            <a class="@(action == "Operations" ? "active" : "")" asp-controller="Admin" asp-action="Operations"><span>◌</span>Nhật ký vận hành</a>
+        </nav>
+        <a class="admin-back" asp-controller="Booking" asp-action="Index">← Về trang khách</a>
+    </aside>
+    <main class="admin-main">
+        <header class="admin-topbar"><div><span>SportMatch</span><b>/</b><strong>@ViewData["Title"]</strong></div><div class="admin-profile"><span class="profile-avatar">SM</span><div><strong>@(administrator?.FullName ?? "Quản trị SportMatch")</strong><small>Quản trị viên hệ thống</small></div><a class="admin-password-link" asp-controller="Account" asp-action="ChangePassword">Đổi mật khẩu</a><form asp-controller="Account" asp-action="Logout" method="post"><button type="submit">Đăng xuất</button></form></div></header>
+        @RenderBody()
+    </main>
+    <script src="~/lib/jquery/dist/jquery.min.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

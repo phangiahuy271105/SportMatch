@@ -1,0 +1,16 @@
+@model AdminDashboardViewModel
+@{ ViewData["Title"] = "Tổng quan"; Layout = "_AdminLayout"; }
+<section class="admin-page shell">
+    @if (TempData["PasswordChanged"] is string passwordMessage) { <div class="admin-success">@passwordMessage</div> }
+    @if (!Model.PaymentWebhookConfigured) { <div class="admin-error">Webhook thanh toán chưa được cấu hình. Hệ thống hiện cần admin xác nhận tiền cọc thủ công.</div> }
+    <div class="admin-heading"><div><span class="kicker">TRUNG TÂM ĐIỀU HÀNH</span><h1>Tổng quan hôm nay</h1><p>Mọi hoạt động SportMatch, trong một góc nhìn.</p></div><a class="primary-button" asp-action="CreateVenue">+ Thêm cụm sân</a></div>
+    <div class="admin-welcome"><div><span>SPORTMATCH / OPERATIONS</span><h2>Sẵn sàng cho những trận đấu tiếp theo.</h2><p>Có @Model.PendingBookings lịch chờ thanh toán và @Model.CancellationRequests yêu cầu hủy cần xử lý.</p><a asp-action="Bookings">Quản lý lịch đặt →</a></div><div class="welcome-orbit" aria-hidden="true">SM</div></div>
+    <div class="admin-stats"><article><span>Tiền cọc đã xác nhận</span><strong>@Model.TotalDeposits.ToString("N0")đ</strong><small>Chỉ tính booking đã xác nhận</small></article><article><span>Tổng lượt đặt sân</span><strong>@Model.TotalBookings</strong><small>@Model.ConfirmedBookings lịch đã xác nhận</small></article><article><span>Cụm sân đang quản lý</span><strong>@Model.VenueCount</strong><small>@Model.CourtCount sân con</small></article><article><span>Khách hàng đã liên hệ</span><strong>@Model.CustomerCount</strong><small>Tính theo số điện thoại duy nhất</small></article></div>
+    <div class="dashboard-columns">
+        <section class="admin-board"><div class="admin-board-heading"><h2>Lịch thi đấu gần nhất</h2><a asp-action="Bookings">Xem tất cả →</a></div>
+        @foreach (var booking in Model.Bookings.OrderByDescending(x => x.BookingDate).Take(6)) { <div class="activity-row"><div class="activity-date"><strong>@booking.BookingDate.Day</strong><small>Tháng @booking.BookingDate.Month</small></div><div><strong>@booking.CustomerName</strong><p>@booking.VenueName · @booking.StartTime</p><small>@booking.BookingCode</small></div><span class="admin-badge">@booking.Status</span></div> }
+        @if (Model.Bookings.Count == 0) { <div class="admin-empty">Chưa có lịch đặt. Những lượt đặt đầu tiên sẽ xuất hiện tại đây.</div> }
+        </section>
+        <section class="admin-board"><div class="admin-board-heading"><h2>Truy cập nhanh</h2></div><div class="quick-admin-links"><a asp-action="Venues"><span>01</span><div><strong>Sân &amp; bảng giá</strong><small>Ảnh, tiện ích, giờ hoạt động</small></div>→</a><a asp-action="Bookings"><span>02</span><div><strong>Đặt sân &amp; tiền cọc</strong><small>Tra cứu, hủy và hoàn cọc</small></div>→</a><a asp-action="Customers"><span>03</span><div><strong>Khách hàng &amp; liên hệ</strong><small>Tổng hợp từ đặt sân và cáp kèo</small></div>→</a><a asp-action="Operations"><span>04</span><div><strong>Nhật ký vận hành</strong><small>Webhook và thao tác admin</small></div>→</a></div></section>
+    </div>
+</section>

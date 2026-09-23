@@ -1,0 +1,18 @@
+[
+  {
+    "ContainingType": "SportMatch.Web.Controllers.PaymentWebhookController",
+    "Method": "Receive",
+    "RelativePath": "api/payments/sepay",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "payload",
+        "Type": "SportMatch.Web.Models.ViewModels.SePayWebhookViewModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  }
+]

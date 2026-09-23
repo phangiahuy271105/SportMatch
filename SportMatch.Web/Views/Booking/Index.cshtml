@@ -1,0 +1,115 @@
+@model BookingIndexViewModel
+@{
+    ViewData["Title"] = "Đặt sân";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/booking.css" asp-append-version="true" />
+}
+
+<section class="hero shell">
+    <div class="hero-shade"></div>
+    <div class="hero-copy">
+        <span class="eyebrow">SPORTMATCH · TP.HCM</span>
+        <h1>Chạm là có sân.<br /><span>Cần là có đội.</span></h1>
+        <p>Tìm khung giờ đẹp, đặt sân trong vài chạm và kết nối với những người cùng trình độ.</p>
+    </div>
+    <form class="search-panel" asp-controller="Booking" asp-action="Index" method="get">
+        <label asp-for="Filter.Sport"><span>Môn thể thao</span><select asp-for="Filter.Sport" name="sport"><option value="all">Tất cả môn</option><option value="football">Bóng đá mini</option><option value="badminton">Cầu lông</option><option value="pickleball">Pickleball</option><option value="basketball">Bóng rổ</option><option value="tennis">Tennis</option><option value="volleyball">Bóng chuyền</option></select></label>
+        <label asp-for="Filter.District"><span>Khu vực</span><select asp-for="Filter.District" name="district"><option value="all">Gần bạn nhất</option><option value="Thủ Đức">Thủ Đức</option><option value="Gò Vấp">Gò Vấp</option><option value="Bình Thạnh">Bình Thạnh</option><option value="Quận 2">Quận 2</option></select></label>
+        <label asp-for="Filter.Date"><span>Ngày chơi</span><input asp-for="Filter.Date" name="date" type="date" /></label>
+        <button class="primary-button search-button" type="submit">Tìm sân</button>
+    </form>
+</section>
+
+<section class="shell content-section">
+    <div class="section-heading compact"><div><span class="kicker">CHỌN NHANH</span><h2>Hôm nay chơi gì?</h2></div></div>
+    <div class="sport-tabs">
+        @foreach (var sport in Model.Sports)
+        {
+            <a class="sport-tab @(Model.Filter.Sport == sport.Value ? "active" : string.Empty)" asp-action="Index" asp-route-sport="@sport.Value" asp-route-district="@Model.Filter.District" asp-route-date="@Model.Filter.Date.ToString("yyyy-MM-dd")"><span>@sport.Icon</span>@sport.Name</a>
+        }
+    </div>
+</section>
+
+<section class="shell content-section" aria-labelledby="venues-title">
+    <div class="section-heading"><div><span class="kicker">CÒN TRỐNG HÔM NAY</span><h2 id="venues-title">Sân nổi bật gần bạn</h2></div><span class="result-count">@Model.Venues.Count sân phù hợp</span></div>
+    @if (Model.Venues.Count == 0)
+    {
+        <div class="empty-state"><span>⌕</span><h3>Chưa tìm thấy sân phù hợp</h3><p>Thử đổi môn thể thao hoặc khu vực nhé.</p></div>
+    }
+    else
+    {
+        <div class="venue-grid">
+            @foreach (var venue in Model.Venues)
+            {
+                <article class="venue-card" data-venue-card data-venue-id="@venue.Id" data-venue-name="@venue.Name" data-sport-name="@venue.SportName" data-district="@venue.District" data-address="@venue.Address" data-price="@venue.PricePerHour.ToString("0", System.Globalization.CultureInfo.InvariantCulture)" data-peak-price="@venue.PeakPrice.ToString("0", System.Globalization.CultureInfo.InvariantCulture)" data-visual-class="@venue.VisualClass">
+                    <button class="venue-card-button" type="button" data-open-venue aria-label="Xem @venue.Name">
+                        <span class="venue-visual @venue.VisualClass">
+                            @if (!string.IsNullOrWhiteSpace(venue.ImagePath))
+                            {
+                                <img class="venue-photo" src="@venue.ImagePath" alt="Ảnh @venue.Name" />
+                            }
+                            <span class="venue-badge">@venue.SportName</span><span class="court-line"></span>
+                        </span>
+                        <span class="venue-body"><span class="venue-title-row"><strong>@venue.Name</strong><span class="rating"><b>★</b> @venue.Rating (@venue.ReviewCount)</span></span><span class="venue-address">⌖ @venue.Address · @venue.District</span><span class="venue-bottom"><span class="venue-price"><small>Chỉ từ</small><strong>@venue.PricePerHour.ToString("N0")đ/giờ</strong></span><span class="available-tag">@venue.AvailableSlotCount giờ trống</span></span></span>
+                    </button>
+                    <button class="favorite-button" type="button" aria-label="Yêu thích">♥</button>
+                    <template data-venue-details>
+                        <div class="venue-features">@foreach (var feature in venue.Features) { <span>✓ @feature</span> }</div>
+                        <div class="time-slots">@foreach (var slot in venue.TimeSlots) { <button class="time-slot" type="button" data-time-slot="@slot.StartTime" disabled="@(!slot.IsAvailable)">@slot.StartTime</button> }</div>
+                    </template>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+<section class="match-strip">
+    <div class="shell"><div class="section-heading light"><div><span class="kicker">KHÔNG ĐỂ AI CHƠI MỘT MÌNH</span><h2>Kèo đang chờ bạn nhập hội</h2></div><a class="text-link" asp-controller="Matchmaking" asp-action="Index">Xem tất cả →</a></div>
+        <div class="quick-match-grid">@foreach (var match in Model.QuickMatches) { <article class="quick-match"><div class="quick-match-top"><span class="sport-pill">@match.Icon @match.SportName</span><span class="spots">Còn @match.AvailableSpots chỗ</span></div><h3>@match.Title</h3><p>@match.VenueName · @match.TimeRange</p></article> }</div>
+    </div>
+</section>
+
+<div class="modal-backdrop is-hidden" id="venue-modal" role="dialog" aria-modal="true" aria-labelledby="venue-modal-title">
+    <div class="modal venue-modal-card"><button class="modal-close" type="button" data-close-modal aria-label="Đóng">×</button><div class="venue-modal-cover" id="venue-modal-cover"><span class="court-frame"></span></div><div class="venue-modal-copy"><span class="kicker" id="venue-modal-meta"></span><h2 id="venue-modal-title"></h2><p id="venue-modal-address"></p><div id="venue-modal-details"></div><div class="modal-action"><div><small>Giá sân</small><strong id="venue-modal-price"></strong></div><button class="primary-button" id="continue-booking" type="button" disabled>Tiếp tục đặt sân</button></div></div></div>
+</div>
+
+<div class="modal-backdrop is-hidden" id="booking-modal" role="dialog" aria-modal="true" aria-labelledby="booking-title">
+    <div class="modal booking-modal-card">
+        <button class="modal-close" type="button" data-close-modal aria-label="Đóng">×</button>
+        <header class="booking-modal-header"><span class="kicker">XÁC NHẬN ĐẶT SÂN</span><h2 id="booking-title">Hoàn tất thông tin đặt sân</h2><p>Không cần tạo tài khoản. Thông tin này giúp sân liên hệ với bạn khi cần.</p></header>
+        <div class="booking-checkout-grid">
+            <aside class="booking-summary" aria-label="Sân đã chọn">
+                <span class="booking-summary-label">LỰA CHỌN CỦA BẠN</span>
+                <div class="booking-summary-icon">✓</div>
+                <h3 id="booking-summary-venue"></h3>
+                <p id="booking-summary-meta"></p>
+                <div class="booking-summary-time"><span>Ngày &amp; giờ chơi</span><strong id="booking-summary-time"></strong><small id="booking-summary-duration"></small></div>
+                <p class="booking-hold-note">⌛ Khung giờ được giữ trong 10 phút sau khi xác nhận.</p>
+            </aside>
+            <form asp-controller="Booking" asp-action="Create" method="post" id="booking-form" class="booking-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="VenueId" id="booking-venue-id" />
+                <input type="hidden" name="BookingDate" value="@Model.Filter.Date.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="StartTime" id="booking-start-time" />
+                <div class="booking-form-grid">
+                    <label class="booking-field"><span>Họ và tên <b>*</b></span><input name="CustomerName" autocomplete="name" required maxlength="80" placeholder="Nguyễn Văn A" /></label>
+                    <label class="booking-field"><span>Số điện thoại <b>*</b></span><input name="PhoneNumber" autocomplete="tel" inputmode="tel" required placeholder="09xx xxx xxx" /></label>
+                    <label class="booking-field booking-field-wide"><span>Email <small>(không bắt buộc)</small></span><input name="Email" type="email" autocomplete="email" placeholder="ban@example.com" /></label>
+                    <label class="booking-field booking-field-wide"><span>Thời lượng đặt sân</span><select name="SlotCount" id="booking-slot-count"><option value="1">1 giờ (1 khung)</option><option value="2">2 giờ (2 khung liên tiếp)</option><option value="3">3 giờ (3 khung liên tiếp)</option><option value="4">4 giờ (4 khung liên tiếp)</option></select></label>
+                </div>
+                <label class="toggle-row"><span><strong>Mở kèo tìm thêm người</strong><small>Đăng trận này lên cộng đồng sau khi thanh toán</small></span><input type="checkbox" name="OpenForMatchmaking" value="true" /></label>
+                <label class="policy-consent"><input type="checkbox" name="AcceptPolicy" value="true" required /><span>Tôi đồng ý với <a asp-controller="Legal" asp-action="Terms" target="_blank">Điều khoản sử dụng</a> và <a asp-controller="Legal" asp-action="Privacy" target="_blank">Chính sách bảo mật</a>.</span></label>
+                <div class="booking-cost"><p><span>Tổng tiền sân</span><strong id="booking-price"></strong></p><p class="booking-deposit-line"><span>Cần thanh toán cọc (30%)</span><strong id="booking-deposit"></strong></p></div>
+                <div class="form-error is-hidden" id="booking-error"></div>
+                <button class="primary-button full-button booking-submit" type="submit">Xác nhận &amp; nhận mã QR</button>
+                <p class="safe-note">🔒 Thanh toán an toàn qua VietQR · Hệ thống tự động xác nhận</p>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/booking.js" asp-append-version="true"></script>
+}
