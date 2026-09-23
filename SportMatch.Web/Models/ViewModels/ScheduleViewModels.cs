@@ -20,6 +20,7 @@ public sealed class ScheduledBookingViewModel
     public int SlotCount { get; init; }
     public decimal Deposit { get; init; }
     public bool OpenForMatchmaking { get; init; }
+    public string? MatchCode { get; init; }
     public required string Status { get; init; }
     public DateTime HoldExpiresAtUtc { get; init; }
     public string? CancellationReason { get; init; }
@@ -52,8 +53,16 @@ public sealed class AdminDashboardViewModel
     public int PendingBookings => Bookings.Count(item => item.Status == "Chờ thanh toán");
     public int ConfirmedBookings => Bookings.Count(item => item.Status == "Đã xác nhận");
     public int CancellationRequests => Bookings.Count(item => item.Status == "Yêu cầu hủy");
-    public decimal TotalDeposits => Bookings.Where(item => item.Status is "Đã xác nhận" or "Yêu cầu hủy" or "Đã hủy").Sum(item => item.Deposit - (item.RefundStatus == "Đã hoàn tiền" ? item.RefundAmount : 0));
+    public int PurgeableBookingCount { get; init; }
+    public decimal TotalDeposits => Bookings.Where(item => item.Status is "Đã xác nhận" or "Đã hoàn thành" or "Yêu cầu hủy" or "Đã hủy").Sum(item => item.Deposit - (item.RefundStatus == "Đã hoàn tiền" ? item.RefundAmount : 0));
     public bool PaymentWebhookConfigured { get; init; }
+}
+
+public sealed class PurgeBookingHistoryViewModel
+{
+    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Hãy nhập cụm từ xác nhận.")]
+    [System.ComponentModel.DataAnnotations.RegularExpression("^XOA LICH SU$", ErrorMessage = "Cụm từ xác nhận chưa đúng.")]
+    public string ConfirmationText { get; set; } = string.Empty;
 }
 
 public sealed class UpdateBookingStatusViewModel

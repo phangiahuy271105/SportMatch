@@ -40,21 +40,25 @@
     }
     else
     {
-        <div class="venue-grid">
-            @foreach (var venue in Model.Venues)
+        <div class="venue-grid" id="venue-grid">
+            @for (var index = 0; index < Model.Venues.Count; index++)
             {
-                <article class="venue-card" data-venue-card data-venue-id="@venue.Id" data-venue-name="@venue.Name" data-sport-name="@venue.SportName" data-district="@venue.District" data-address="@venue.Address" data-price="@venue.PricePerHour.ToString("0", System.Globalization.CultureInfo.InvariantCulture)" data-peak-price="@venue.PeakPrice.ToString("0", System.Globalization.CultureInfo.InvariantCulture)" data-visual-class="@venue.VisualClass">
+                var venue = Model.Venues[index];
+                <article class="venue-card @(index >= 6 ? "venue-card-collapsed" : string.Empty)" data-venue-card data-venue-id="@venue.Id" data-venue-name="@venue.Name" data-sport-name="@venue.SportName" data-district="@venue.District" data-address="@venue.Address" data-price="@venue.PricePerHour.ToString("0", System.Globalization.CultureInfo.InvariantCulture)" data-peak-price="@venue.PeakPrice.ToString("0", System.Globalization.CultureInfo.InvariantCulture)" data-visual-class="@venue.VisualClass">
                     <button class="venue-card-button" type="button" data-open-venue aria-label="Xem @venue.Name">
-                        <span class="venue-visual @venue.VisualClass">
+                        <span class="venue-visual @venue.VisualClass @(string.IsNullOrWhiteSpace(venue.ImagePath) ? "venue-visual-placeholder" : "venue-visual-photo")">
                             @if (!string.IsNullOrWhiteSpace(venue.ImagePath))
                             {
                                 <img class="venue-photo" src="@venue.ImagePath" alt="Ảnh @venue.Name" />
                             }
-                            <span class="venue-badge">@venue.SportName</span><span class="court-line"></span>
+                            else
+                            {
+                                <span class="court-line"></span>
+                            }
+                            <span class="venue-badge">@venue.SportName</span>
                         </span>
-                        <span class="venue-body"><span class="venue-title-row"><strong>@venue.Name</strong><span class="rating"><b>★</b> @venue.Rating (@venue.ReviewCount)</span></span><span class="venue-address">⌖ @venue.Address · @venue.District</span><span class="venue-bottom"><span class="venue-price"><small>Chỉ từ</small><strong>@venue.PricePerHour.ToString("N0")đ/giờ</strong></span><span class="available-tag">@venue.AvailableSlotCount giờ trống</span></span></span>
+                        <span class="venue-body"><strong class="venue-name">@venue.VenueName</strong><span class="court-name">@venue.CourtName</span><span class="venue-address">⌖ @venue.Address</span><span class="venue-bottom"><span class="venue-price"><small>Giá từ</small><strong>@venue.PricePerHour.ToString("N0")đ/giờ</strong></span><span class="available-tag">@venue.AvailableSlotCount giờ trống</span></span></span>
                     </button>
-                    <button class="favorite-button" type="button" aria-label="Yêu thích">♥</button>
                     <template data-venue-details>
                         <div class="venue-features">@foreach (var feature in venue.Features) { <span>✓ @feature</span> }</div>
                         <div class="time-slots">@foreach (var slot in venue.TimeSlots) { <button class="time-slot" type="button" data-time-slot="@slot.StartTime" disabled="@(!slot.IsAvailable)">@slot.StartTime</button> }</div>
@@ -62,6 +66,10 @@
                 </article>
             }
         </div>
+        @if (Model.Venues.Count > 6)
+        {
+            <div class="venue-more-row"><button class="venue-more-button" id="show-more-venues" type="button">Xem thêm @(Model.Venues.Count - 6) sân</button></div>
+        }
     }
 </section>
 
@@ -99,7 +107,12 @@
                     <label class="booking-field booking-field-wide"><span>Email <small>(không bắt buộc)</small></span><input name="Email" type="email" autocomplete="email" placeholder="ban@example.com" /></label>
                     <label class="booking-field booking-field-wide"><span>Thời lượng đặt sân</span><select name="SlotCount" id="booking-slot-count"><option value="1">1 giờ (1 khung)</option><option value="2">2 giờ (2 khung liên tiếp)</option><option value="3">3 giờ (3 khung liên tiếp)</option><option value="4">4 giờ (4 khung liên tiếp)</option></select></label>
                 </div>
-                <label class="toggle-row"><span><strong>Mở kèo tìm thêm người</strong><small>Đăng trận này lên cộng đồng sau khi thanh toán</small></span><input type="checkbox" name="OpenForMatchmaking" value="true" /></label>
+                <label class="toggle-row"><span><strong>Mở kèo tìm thêm người</strong><small>Kèo chỉ được đăng sau khi tiền cọc sân được xác nhận</small></span><input type="checkbox" name="OpenForMatchmaking" value="true" id="open-for-matchmaking" /></label>
+                <div class="booking-match-options is-hidden" id="booking-match-options">
+                    <label class="booking-field"><span>Cần thêm bao nhiêu người?</span><input name="MatchNeededPlayers" type="number" min="1" max="20" value="2" /></label>
+                    <label class="booking-field"><span>Trình độ</span><select name="MatchLevel"><option value="Casual">Vui vẻ / Dưỡng sinh</option><option value="Intermediate" selected>Phong trào / Bán chuyên</option><option value="Competitive">Thi đấu / Giải phủi</option></select></label>
+                    <label class="booking-field booking-field-wide"><span>Chi phí chia sân mỗi người</span><input name="MatchCostPerPerson" type="number" min="0" max="1000000" step="1000" value="0" /></label>
+                </div>
                 <label class="policy-consent"><input type="checkbox" name="AcceptPolicy" value="true" required /><span>Tôi đồng ý với <a asp-controller="Legal" asp-action="Terms" target="_blank">Điều khoản sử dụng</a> và <a asp-controller="Legal" asp-action="Privacy" target="_blank">Chính sách bảo mật</a>.</span></label>
                 <div class="booking-cost"><p><span>Tổng tiền sân</span><strong id="booking-price"></strong></p><p class="booking-deposit-line"><span>Cần thanh toán cọc (30%)</span><strong id="booking-deposit"></strong></p></div>
                 <div class="form-error is-hidden" id="booking-error"></div>

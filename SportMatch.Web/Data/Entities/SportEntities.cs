@@ -5,6 +5,7 @@ namespace SportMatch.Web.Data.Entities;
 public sealed class VenueComplex
 {
     public int Id { get; set; }
+    public bool IsActive { get; set; } = true;
     [MaxLength(150)] public string Name { get; set; } = string.Empty;
     [MaxLength(250)] public string Address { get; set; } = string.Empty;
     [MaxLength(50)] public string District { get; set; } = string.Empty;
@@ -20,11 +21,13 @@ public sealed class VenueComplex
 public sealed class SportCourt
 {
     public int Id { get; set; }
+    public bool IsActive { get; set; } = true;
     public int VenueComplexId { get; set; }
     public VenueComplex? VenueComplex { get; set; }
     [MaxLength(100)] public string Name { get; set; } = string.Empty;
     [MaxLength(50)] public string SportName { get; set; } = string.Empty;
     [MaxLength(30)] public string CourtType { get; set; } = string.Empty;
+    [MaxLength(300)] public string? ImagePath { get; set; }
     public decimal OffPeakPrice { get; set; }
     public decimal PeakPrice { get; set; }
     public ICollection<CourtTimeSlot> TimeSlots { get; set; } = [];
@@ -56,6 +59,10 @@ public sealed class Booking
     public decimal TotalAmount { get; set; }
     public decimal DepositAmount { get; set; }
     public bool OpenForMatchmaking { get; set; }
+    public int MatchNeededPlayers { get; set; } = 2;
+    [MaxLength(30)] public string MatchLevel { get; set; } = "Intermediate";
+    public decimal MatchCostPerPerson { get; set; }
+    public MatchPost? MatchPost { get; set; }
     [MaxLength(30)] public string Status { get; set; } = "Chờ thanh toán";
     public DateTime CreatedAtUtc { get; set; }
     public DateTime HoldExpiresAtUtc { get; set; }
@@ -72,6 +79,8 @@ public sealed class Booking
 public sealed class MatchPost
 {
     public int Id { get; set; }
+    public int? SourceBookingId { get; set; }
+    public Booking? SourceBooking { get; set; }
     [MaxLength(20)] public string MatchCode { get; set; } = string.Empty;
     [MaxLength(80)] public string HostName { get; set; } = string.Empty;
     [MaxLength(20)] public string PhoneNumber { get; set; } = string.Empty;

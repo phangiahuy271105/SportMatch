@@ -1,0 +1,25 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# .NET build output
+**/bin/
+**/obj/
+.artifacts/
+
+# Runtime-only data
+SportMatch.Web/App_Data/
+SportMatch.Web/wwwroot/uploads/
+sportmatch-run*.log
+sportmatch-run*.pid
+
+# Local database and backup files
+*.mdf
+*.ldf
+*.bak
+
+# Environment and local secrets
+.env
+.env.*
+appsettings.Local.json

@@ -2,8 +2,17 @@
 @{ ViewData["Title"] = "Quản lý đặt sân"; Layout = "_AdminLayout"; }
 <section class="admin-page shell">
     <div class="admin-heading"><div><span class="kicker">VẬN HÀNH</span><h1>Đặt sân, hủy &amp; hoàn cọc</h1><p>Tra cứu khách, xác nhận thanh toán và xử lý yêu cầu hủy theo chính sách.</p></div></div>
-    <form class="admin-filter" method="get"><input name="search" value="@ViewData["Search"]" placeholder="Tìm mã đặt, tên khách, số điện thoại…" aria-label="Tìm booking" /><select name="status" aria-label="Trạng thái"><option value="">Mọi trạng thái</option>@foreach(var status in new[] { "Chờ thanh toán", "Đã xác nhận", "Yêu cầu hủy", "Đã hủy", "Hết hạn" }) { <option selected="@(ViewData["Status"] as string == status)" value="@status">@status</option> }</select><button class="primary-button">Lọc danh sách</button></form>
+    <nav class="booking-scope-tabs" aria-label="Nhóm booking"><a class="@((ViewData["Scope"] as string) == "active" ? "active" : null)" asp-action="Bookings" asp-route-scope="active">Đang xử lý</a><a class="@((ViewData["Scope"] as string) == "history" ? "active" : null)" asp-action="Bookings" asp-route-scope="history">Lịch sử</a><a class="@((ViewData["Scope"] as string) == "all" ? "active" : null)" asp-action="Bookings" asp-route-scope="all">Tất cả</a></nav>
+    <form class="admin-filter" method="get"><input type="hidden" name="scope" value="@ViewData["Scope"]" /><input name="search" value="@ViewData["Search"]" placeholder="Tìm mã đặt, tên khách, số điện thoại…" aria-label="Tìm booking" /><select name="status" aria-label="Trạng thái"><option value="">Mọi trạng thái</option>@foreach(var status in new[] { "Chờ thanh toán", "Đã xác nhận", "Yêu cầu hủy", "Đã hoàn thành", "Đã hủy", "Hết hạn" }) { <option selected="@(ViewData["Status"] as string == status)" value="@status">@status</option> }</select><button class="primary-button">Lọc danh sách</button></form>
     @if (TempData["AdminError"] is string error) { <p class="admin-error">@error</p> }
+    @if (TempData["AdminMessage"] is string message) { <p class="admin-success">@message</p> }
+    @if ((ViewData["Scope"] as string) == "history")
+    {
+        <details class="history-cleanup">
+            <summary>Dọn dữ liệu booking cũ (@Model.PurgeableBookingCount có thể xóa)</summary>
+            <div><p>Chỉ xóa booking đã hoàn thành, đã hết hạn hoặc đã hủy và xử lý hoàn tiền xong. Dữ liệu đang hoạt động, sân và tài khoản admin không bị ảnh hưởng.</p><form asp-action="PurgeBookingHistory" method="post"><label for="ConfirmationText">Nhập <strong>XOA LICH SU</strong> để xác nhận</label><input id="ConfirmationText" name="ConfirmationText" autocomplete="off" required /><button class="cancel-button" type="submit">Xóa vĩnh viễn lịch sử đủ điều kiện</button></form></div>
+        </details>
+    }
     <div class="admin-booking-list">
     @if(Model.Bookings.Count == 0) { <div class="admin-empty">Không có booking phù hợp.</div> }
     @foreach(var booking in Model.Bookings) {

@@ -54,14 +54,58 @@ public sealed class AdminController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Bookings(string? search, string? status)
+    public async Task<IActionResult> Bookings(string? search, string? status, string scope = "active")
     {
-        var bookings = await _bookingStore.GetAllAsync();
+        var entities = await _db.Bookings.AsNoTracking().ToListAsync();
+        var purgeableCount = entities.Count(x => BookingLifecyclePolicy.CanPurge(x));
+        var bookings = (await _bookingStore.GetAllAsync()).ToList();
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            bookings = scope switch
+            {
+                "history" => bookings.Where(x => x.Status is "Đã hoàn thành" or "Đã hủy" or "Hết hạn").ToList(),
+                "all" => bookings,
+                _ => bookings.Where(x => x.Status is not ("Đã hoàn thành" or "Đã hủy" or "Hết hạn")).ToList()
+            };
+        }
         if (!string.IsNullOrWhiteSpace(search)) bookings = bookings.Where(x => (x.BookingCode + " " + x.CustomerName + " " + x.PhoneNumber + " " + x.VenueName).Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
         if (!string.IsNullOrWhiteSpace(status)) bookings = bookings.Where(x => x.Status == status).ToList();
+        bookings = scope == "history"
+            ? bookings.OrderByDescending(x => x.BookingDate).ThenByDescending(x => x.StartTime).ToList()
+            : bookings.OrderBy(x => x.BookingDate).ThenBy(x => x.StartTime).ToList();
         ViewData["Search"] = search;
         ViewData["Status"] = status;
-        return View(new AdminDashboardViewModel { Bookings = bookings });
+        ViewData["Scope"] = scope;
+        return View(new AdminDashboardViewModel { Bookings = bookings, PurgeableBookingCount = purgeableCount });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> PurgeBookingHistory(PurgeBookingHistoryViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            TempData["AdminError"] = "Chưa xóa dữ liệu: hãy nhập đúng cụm từ XOA LICH SU.";
+            return RedirectToAction(nameof(Bookings), new { scope = "history" });
+        }
+
+        var bookings = await _db.Bookings.Include(x => x.MatchPost).ToListAsync();
+        var removable = bookings.Where(x => BookingLifecyclePolicy.CanPurge(x)).ToList();
+        if (removable.Count == 0)
+        {
+            TempData["AdminMessage"] = "Không có booking lịch sử nào đủ điều kiện để xóa.";
+            return RedirectToAction(nameof(Bookings), new { scope = "history" });
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var linkedMatches = removable.Where(x => x.MatchPost is not null).Select(x => x.MatchPost!).ToList();
+        _db.MatchPosts.RemoveRange(linkedMatches);
+        _db.Bookings.RemoveRange(removable);
+        await _db.SaveChangesAsync();
+        await AuditAsync("Dọn lịch sử booking", "Booking", removable.Count.ToString(), $"Đã xóa {removable.Count} booking kết thúc và {linkedMatches.Count} kèo liên kết");
+        await transaction.CommitAsync();
+
+        TempData["AdminMessage"] = $"Đã dọn {removable.Count} booking cũ. Booking đang hoạt động và yêu cầu hoàn tiền vẫn được giữ lại.";
+        return RedirectToAction(nameof(Bookings), new { scope = "history" });
     }
 
     [HttpGet]
@@ -154,6 +198,7 @@ public sealed class AdminController : Controller
                 PhoneNumber = x.PhoneNumber,
                 OpeningHours = $"{x.OpenTime:HH:mm} – {x.CloseTime:HH:mm}",
                 ImagePath = x.ImagePath,
+                IsActive = x.IsActive,
                 CourtCount = x.Courts.Count,
                 Sports = x.Courts.Select(c => c.SportName).Distinct().ToList()
             }).ToList();
@@ -170,20 +215,22 @@ public sealed class AdminController : Controller
         if (venue is null) return NotFound();
         ViewData["VenueName"] = venue.Name;
         ViewData["VenueId"] = id;
-        return View(venue.Courts.Select(x => new AdminCourtViewModel { Id = x.Id, VenueComplexId = id, Name = x.Name, SportName = x.SportName, CourtType = x.CourtType, OffPeakPrice = x.OffPeakPrice, PeakPrice = x.PeakPrice }).ToList());
+        return View(venue.Courts.Select(x => new AdminCourtViewModel { Id = x.Id, VenueComplexId = id, Name = x.Name, SportName = x.SportName, CourtType = x.CourtType, ImagePath = x.ImagePath ?? venue.ImagePath, IsActive = x.IsActive, OffPeakPrice = x.OffPeakPrice, PeakPrice = x.PeakPrice }).ToList());
     }
 
     [HttpGet]
     public async Task<IActionResult> Court(int venueId, int? id)
     {
-        if (!await _db.VenueComplexes.AnyAsync(x => x.Id == venueId)) return NotFound();
+        var venue = await _db.VenueComplexes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == venueId);
+        if (venue is null) return NotFound();
         if (id is null) return View(new AdminCourtViewModel { VenueComplexId = venueId });
         var court = await _db.SportCourts.AsNoTracking().Include(x => x.TimeSlots).SingleOrDefaultAsync(x => x.Id == id && x.VenueComplexId == venueId);
         if (court is null) return NotFound();
-        return View(new AdminCourtViewModel { Id = court.Id, VenueComplexId = venueId, Name = court.Name, SportName = court.SportName, CourtType = court.CourtType, OffPeakPrice = court.OffPeakPrice, PeakPrice = court.PeakPrice, ActiveSlots = court.TimeSlots.Where(x => x.IsActive).Select(x => x.Id).ToList(), Slots = court.TimeSlots.OrderBy(x => x.StartTime).Select(x => new AdminSlotViewModel { Id = x.Id, Time = x.StartTime.ToString("HH:mm") }).ToList() });
+        return View(new AdminCourtViewModel { Id = court.Id, VenueComplexId = venueId, Name = court.Name, SportName = court.SportName, CourtType = court.CourtType, ExistingImagePath = court.ImagePath ?? venue.ImagePath, ImagePath = court.ImagePath ?? venue.ImagePath, HasOwnImage = court.ImagePath is not null, IsActive = court.IsActive, OffPeakPrice = court.OffPeakPrice, PeakPrice = court.PeakPrice, ActiveSlots = court.TimeSlots.Where(x => x.IsActive).Select(x => x.Id).ToList(), Slots = court.TimeSlots.OrderBy(x => x.StartTime).Select(x => new AdminSlotViewModel { Id = x.Id, Time = x.StartTime.ToString("HH:mm") }).ToList() });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<IActionResult> Court(AdminCourtViewModel model)
     {
         var venue = await _db.VenueComplexes.FindAsync(model.VenueComplexId);
@@ -191,9 +238,13 @@ public sealed class AdminController : Controller
         var court = model.Id == 0 ? new SportCourt { VenueComplexId = venue.Id } : await _db.SportCourts.Include(x => x.TimeSlots).SingleOrDefaultAsync(x => x.Id == model.Id && x.VenueComplexId == venue.Id);
         if (court is null) return NotFound();
         model.Slots = court.TimeSlots.OrderBy(x => x.StartTime).Select(x => new AdminSlotViewModel { Id = x.Id, Time = x.StartTime.ToString("HH:mm") }).ToList();
+        await ValidateImageAsync(model.Image, nameof(model.Image));
         if (!ModelState.IsValid) return View(model);
+        var previousImagePath = court.ImagePath;
         court.Name = model.Name.Trim(); court.SportName = model.SportName; court.CourtType = model.CourtType.Trim();
-        court.OffPeakPrice = model.OffPeakPrice; court.PeakPrice = model.PeakPrice;
+        court.OffPeakPrice = model.OffPeakPrice; court.PeakPrice = model.PeakPrice; court.IsActive = model.IsActive;
+        if (model.RemoveImage) court.ImagePath = null;
+        if (model.Image is not null) court.ImagePath = await SaveImageAsync(model.Image);
         if (model.Id == 0)
         {
             for (var minutes = (int)venue.OpenTime.ToTimeSpan().TotalMinutes; minutes + 60 <= venue.CloseTime.ToTimeSpan().TotalMinutes; minutes += 60)
@@ -202,6 +253,7 @@ public sealed class AdminController : Controller
         }
         else foreach (var slot in court.TimeSlots) slot.IsActive = model.ActiveSlots.Contains(slot.Id);
         await _db.SaveChangesAsync();
+        if (previousImagePath != court.ImagePath) DeleteUploadedImage(previousImagePath);
         await AuditAsync(model.Id == 0 ? "Thêm sân con" : "Cập nhật sân con", "SportCourt", court.Id.ToString(), court.Name);
         return RedirectToAction(nameof(Courts), new { id = venue.Id });
     }
@@ -258,11 +310,54 @@ public sealed class AdminController : Controller
         if (!ModelState.IsValid) return View("VenueForm", model);
         var venue = await _db.VenueComplexes.Include(x => x.Courts).ThenInclude(x => x.TimeSlots).SingleOrDefaultAsync(x => x.Id == model.Id);
         if (venue is null) return NotFound();
+        var previousImagePath = venue.ImagePath;
         await ApplyVenueFormAsync(venue, model);
         await _db.SaveChangesAsync();
+        if (previousImagePath != venue.ImagePath) DeleteUploadedImage(previousImagePath);
         await AuditAsync("Cập nhật cụm sân", "VenueComplex", venue.Id.ToString(), venue.Name);
         TempData["AdminMessage"] = "Đã cập nhật thông tin sân.";
         return RedirectToAction(nameof(Venues));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleVenue(int id)
+    {
+        var venue = await _db.VenueComplexes.Include(x => x.Courts).SingleOrDefaultAsync(x => x.Id == id);
+        if (venue is null) return NotFound();
+        if (venue.IsActive)
+        {
+            var courtIds = venue.Courts.Select(x => x.Id).ToList();
+            var hasUpcomingBookings = await _db.Bookings.AnyAsync(x => courtIds.Contains(x.SportCourtId) && x.BookingDate >= DateOnly.FromDateTime(DateTime.Today) && (x.Status == "Chờ thanh toán" || x.Status == "Đã xác nhận" || x.Status == "Yêu cầu hủy"));
+            if (hasUpcomingBookings)
+            {
+                TempData["AdminError"] = "Không thể ẩn cụm sân vì vẫn còn lịch đặt sắp tới cần xử lý.";
+                return RedirectToAction(nameof(Venues));
+            }
+        }
+        venue.IsActive = !venue.IsActive;
+        await _db.SaveChangesAsync();
+        await AuditAsync(venue.IsActive ? "Hiện cụm sân" : "Ẩn cụm sân", "VenueComplex", venue.Id.ToString(), venue.Name);
+        return RedirectToAction(nameof(Venues));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleCourt(int id)
+    {
+        var court = await _db.SportCourts.SingleOrDefaultAsync(x => x.Id == id);
+        if (court is null) return NotFound();
+        if (court.IsActive)
+        {
+            var hasUpcomingBookings = await _db.Bookings.AnyAsync(x => x.SportCourtId == id && x.BookingDate >= DateOnly.FromDateTime(DateTime.Today) && (x.Status == "Chờ thanh toán" || x.Status == "Đã xác nhận" || x.Status == "Yêu cầu hủy"));
+            if (hasUpcomingBookings)
+            {
+                TempData["AdminError"] = "Không thể ẩn sân con vì vẫn còn lịch đặt sắp tới cần xử lý.";
+                return RedirectToAction(nameof(Courts), new { id = court.VenueComplexId });
+            }
+        }
+        court.IsActive = !court.IsActive;
+        await _db.SaveChangesAsync();
+        await AuditAsync(court.IsActive ? "Hiện sân con" : "Ẩn sân con", "SportCourt", court.Id.ToString(), court.Name);
+        return RedirectToAction(nameof(Courts), new { id = court.VenueComplexId });
     }
 
     [HttpPost]
@@ -281,7 +376,7 @@ public sealed class AdminController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> ProcessCancellation(string bookingCode, string decision)
     {
-        var booking = await _db.Bookings.SingleOrDefaultAsync(x => x.BookingCode == bookingCode && x.Status == "Yêu cầu hủy");
+        var booking = await _db.Bookings.Include(x => x.MatchPost).SingleOrDefaultAsync(x => x.BookingCode == bookingCode && x.Status == "Yêu cầu hủy");
         if (booking is null) return NotFound();
         if (decision == "reject")
         {
@@ -298,6 +393,7 @@ public sealed class AdminController : Controller
             booking.RefundStatus = booking.RefundAmount > 0 ? "Chờ hoàn tiền" : "Không hoàn cọc";
             booking.Status = "Đã hủy";
             booking.CancelledAtUtc = DateTime.UtcNow;
+            if (booking.MatchPost is not null) booking.MatchPost.Status = "Đã đóng";
         }
         await _db.SaveChangesAsync();
         await AuditAsync("Xử lý yêu cầu hủy", "Booking", bookingCode, $"{decision}; hoàn {booking.RefundPercent ?? 0}%");
@@ -318,7 +414,7 @@ public sealed class AdminController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelByVenue(string bookingCode, string reason)
     {
-        var booking = await _db.Bookings.SingleOrDefaultAsync(x => x.BookingCode == bookingCode && x.Status == "Đã xác nhận");
+        var booking = await _db.Bookings.Include(x => x.MatchPost).SingleOrDefaultAsync(x => x.BookingCode == bookingCode && x.Status == "Đã xác nhận");
         if (booking is null) return NotFound();
         booking.CancellationReason = string.IsNullOrWhiteSpace(reason) ? "Sự cố sân hoặc điều kiện khách quan" : reason.Trim();
         booking.CancellationRequestedAtUtc = DateTime.UtcNow;
@@ -327,6 +423,7 @@ public sealed class AdminController : Controller
         booking.RefundAmount = booking.DepositAmount;
         booking.RefundStatus = "Chờ hoàn tiền";
         booking.Status = "Đã hủy";
+        if (booking.MatchPost is not null) booking.MatchPost.Status = "Đã đóng";
         await _db.SaveChangesAsync();
         await AuditAsync("Hủy do sân", "Booking", bookingCode, booking.CancellationReason);
         return RedirectToAction(nameof(Bookings));
@@ -335,14 +432,19 @@ public sealed class AdminController : Controller
     private async Task ValidateVenueFormAsync(AdminVenueFormViewModel model)
     {
         if (model.CloseTime <= model.OpenTime) ModelState.AddModelError(nameof(model.CloseTime), "Giờ đóng cửa phải sau giờ mở cửa.");
-        if (model.Image is null) return;
+        await ValidateImageAsync(model.Image, nameof(model.Image));
+    }
+
+    private async Task ValidateImageAsync(IFormFile? image, string fieldName)
+    {
+        if (image is null) return;
         var extensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
         var contentTypes = new[] { "image/jpeg", "image/png", "image/webp" };
-        if (model.Image.Length == 0) ModelState.AddModelError(nameof(model.Image), "Tệp ảnh đang trống.");
-        if (model.Image.Length > 5 * 1024 * 1024) ModelState.AddModelError(nameof(model.Image), "Ảnh không được vượt quá 5 MB.");
-        if (!extensions.Contains(Path.GetExtension(model.Image.FileName).ToLowerInvariant())) ModelState.AddModelError(nameof(model.Image), "Chỉ nhận ảnh JPG, PNG hoặc WebP.");
-        if (!contentTypes.Contains(model.Image.ContentType.ToLowerInvariant())) ModelState.AddModelError(nameof(model.Image), "Định dạng nội dung ảnh không hợp lệ.");
-        if (model.Image.Length > 0 && !await HasValidImageSignatureAsync(model.Image)) ModelState.AddModelError(nameof(model.Image), "Nội dung tệp không phải ảnh JPG, PNG hoặc WebP hợp lệ.");
+        if (image.Length == 0) ModelState.AddModelError(fieldName, "Tệp ảnh đang trống.");
+        if (image.Length > 5 * 1024 * 1024) ModelState.AddModelError(fieldName, "Ảnh không được vượt quá 5 MB.");
+        if (!extensions.Contains(Path.GetExtension(image.FileName).ToLowerInvariant())) ModelState.AddModelError(fieldName, "Chỉ nhận ảnh JPG, PNG hoặc WebP.");
+        if (!contentTypes.Contains(image.ContentType.ToLowerInvariant())) ModelState.AddModelError(fieldName, "Định dạng nội dung ảnh không hợp lệ.");
+        if (image.Length > 0 && !await HasValidImageSignatureAsync(image)) ModelState.AddModelError(fieldName, "Nội dung tệp không phải ảnh JPG, PNG hoặc WebP hợp lệ.");
     }
 
     private static async Task<bool> HasValidImageSignatureAsync(IFormFile image)
@@ -368,6 +470,7 @@ public sealed class AdminController : Controller
         venue.CloseTime = model.CloseTime;
         venue.Amenities = model.Amenities?.Trim() ?? string.Empty;
         venue.Description = model.Description?.Trim() ?? string.Empty;
+        if (model.RemoveImage) venue.ImagePath = null;
         if (model.Image is not null) venue.ImagePath = await SaveImageAsync(model.Image);
 
         var court = venue.Courts.OrderBy(x => x.Id).FirstOrDefault();
@@ -424,6 +527,15 @@ public sealed class AdminController : Controller
         await using var stream = System.IO.File.Create(Path.Combine(uploadDirectory, fileName));
         await image.CopyToAsync(stream);
         return $"/uploads/venues/{fileName}";
+    }
+
+    private void DeleteUploadedImage(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath) || !imagePath.StartsWith("/uploads/venues/", StringComparison.OrdinalIgnoreCase)) return;
+        var uploadDirectory = Path.GetFullPath(Path.Combine(_environment.WebRootPath, "uploads", "venues"));
+        var candidate = Path.GetFullPath(Path.Combine(_environment.WebRootPath, imagePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar)));
+        if (!candidate.StartsWith(uploadDirectory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) return;
+        if (System.IO.File.Exists(candidate)) System.IO.File.Delete(candidate);
     }
 
     private async Task AuditAsync(string action, string entityType, string entityId, string details)

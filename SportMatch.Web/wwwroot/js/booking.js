@@ -8,6 +8,8 @@
     const bookingForm = document.querySelector("#booking-form");
     const errorBox = document.querySelector("#booking-error");
     const slotCount = document.querySelector("#booking-slot-count");
+    const matchmakingToggle = document.querySelector("#open-for-matchmaking");
+    const matchmakingOptions = document.querySelector("#booking-match-options");
     const bookingDateInput = bookingForm.querySelector("input[name='BookingDate']");
     const visualClasses = ["venue-green", "venue-blue", "venue-orange", "venue-copper", "venue-purple", "venue-teal"];
     let selectedVenue = null;
@@ -38,14 +40,6 @@
         document.body.style.overflow = "";
     }
 
-    function showToast(title, message) {
-        const toast = document.querySelector("#app-toast");
-        document.querySelector("#toast-title").textContent = title;
-        document.querySelector("#toast-body").textContent = message;
-        toast.classList.add("show");
-        window.setTimeout(() => toast.classList.remove("show"), 3600);
-    }
-
     function openVenue(card) {
         selectedVenue = {
             id: card.dataset.venueId,
@@ -74,12 +68,13 @@
         button.addEventListener("click", () => openVenue(button.closest("[data-venue-card]")));
     });
 
-    document.querySelectorAll(".favorite-button").forEach(button => {
-        button.addEventListener("click", () => {
-            button.classList.toggle("active");
-            showToast(button.classList.contains("active") ? "Đã lưu sân yêu thích" : "Đã bỏ khỏi yêu thích", "Lựa chọn được lưu trên giao diện demo.");
+    const showMoreButton = document.querySelector("#show-more-venues");
+    if (showMoreButton) {
+        showMoreButton.addEventListener("click", () => {
+            document.querySelectorAll(".venue-card-collapsed").forEach(card => card.classList.remove("venue-card-collapsed"));
+            showMoreButton.closest(".venue-more-row").remove();
         });
-    });
+    }
 
     detailsHost.addEventListener("click", event => {
         const button = event.target.closest("[data-time-slot]");
@@ -104,6 +99,7 @@
     });
 
     slotCount.addEventListener("change", updatePrice);
+    matchmakingToggle.addEventListener("change", () => matchmakingOptions.classList.toggle("is-hidden", !matchmakingToggle.checked));
 
     bookingForm.addEventListener("submit", async event => {
         event.preventDefault();

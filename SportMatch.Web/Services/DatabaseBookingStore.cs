@@ -19,7 +19,7 @@ public sealed class DatabaseBookingStore(SportMatchDbContext db) : IBookingStore
 {
     public async Task<IReadOnlyList<ScheduledBookingViewModel>> GetAllAsync()
     {
-        var bookings = await db.Bookings.AsNoTracking().Include(x => x.SportCourt).ThenInclude(x => x!.VenueComplex)
+        var bookings = await db.Bookings.AsNoTracking().Include(x => x.MatchPost).Include(x => x.SportCourt).ThenInclude(x => x!.VenueComplex)
             .OrderBy(x => x.BookingDate).ThenBy(x => x.StartTime)
             .ToListAsync();
         return bookings.Select(Map).ToList();
@@ -27,7 +27,7 @@ public sealed class DatabaseBookingStore(SportMatchDbContext db) : IBookingStore
 
     public async Task<ScheduledBookingViewModel?> GetByCodeAsync(string bookingCode)
     {
-        var booking = await db.Bookings.AsNoTracking().Include(x => x.SportCourt).ThenInclude(x => x!.VenueComplex)
+        var booking = await db.Bookings.AsNoTracking().Include(x => x.MatchPost).Include(x => x.SportCourt).ThenInclude(x => x!.VenueComplex)
             .SingleOrDefaultAsync(x => x.BookingCode == bookingCode);
         return booking is null ? null : Map(booking);
     }
@@ -49,18 +49,25 @@ public sealed class DatabaseBookingStore(SportMatchDbContext db) : IBookingStore
 
     public async Task<bool> UpdateStatusAsync(string bookingCode, string status)
     {
-        var booking = await db.Bookings.SingleOrDefaultAsync(x => x.BookingCode == bookingCode);
+        var booking = await db.Bookings.Include(x => x.MatchPost).Include(x => x.SportCourt).ThenInclude(x => x!.VenueComplex).SingleOrDefaultAsync(x => x.BookingCode == bookingCode);
         if (booking is null) return false;
         if (status == "Đã xác nhận" && (booking.Status != "Chờ thanh toán" || booking.HoldExpiresAtUtc <= DateTime.UtcNow)) return false;
         booking.Status = status;
+        if (status == "Đã xác nhận") EnsureMatchPost(booking);
         await db.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> ConfirmPaymentAsync(long transactionId, string? paymentCode, string content, decimal amount)
     {
-        if (await db.Bookings.AnyAsync(x => x.PaymentTransactionId == transactionId)) return true;
-        var candidates = await db.Bookings.Where(x => x.Status == "Chờ thanh toán").ToListAsync();
+        var processed = await db.Bookings.Include(x => x.MatchPost).Include(x => x.SportCourt).ThenInclude(x => x!.VenueComplex).SingleOrDefaultAsync(x => x.PaymentTransactionId == transactionId);
+        if (processed is not null)
+        {
+            EnsureMatchPost(processed);
+            await db.SaveChangesAsync();
+            return true;
+        }
+        var candidates = await db.Bookings.Include(x => x.MatchPost).Include(x => x.SportCourt).ThenInclude(x => x!.VenueComplex).Where(x => x.Status == "Chờ thanh toán").ToListAsync();
         var booking = candidates.FirstOrDefault(x =>
             string.Equals(x.BookingCode, paymentCode, StringComparison.OrdinalIgnoreCase) ||
             content.Contains(x.BookingCode, StringComparison.OrdinalIgnoreCase));
@@ -68,8 +75,33 @@ public sealed class DatabaseBookingStore(SportMatchDbContext db) : IBookingStore
         booking.Status = "Đã xác nhận";
         booking.PaymentTransactionId = transactionId;
         booking.PaidAtUtc = DateTime.UtcNow;
+        EnsureMatchPost(booking);
         await db.SaveChangesAsync();
         return true;
+    }
+
+    private void EnsureMatchPost(Booking booking)
+    {
+        if (!booking.OpenForMatchmaking || booking.MatchPost is not null || booking.SportCourt?.VenueComplex is null) return;
+        var court = booking.SportCourt;
+        booking.MatchPost = new MatchPost
+        {
+            SourceBookingId = booking.Id,
+            MatchCode = $"MK{DateTime.UtcNow:MMddHHmmss}{Random.Shared.Next(100, 999)}",
+            HostName = booking.CustomerName,
+            PhoneNumber = booking.PhoneNumber,
+            Sport = SportSlug(court.SportName),
+            SportName = court.SportName,
+            VenueName = $"{court.VenueComplex.Name} · {court.Name}",
+            District = court.VenueComplex.District,
+            MatchDate = booking.BookingDate,
+            StartTime = booking.StartTime,
+            Level = booking.MatchLevel,
+            NeededPlayers = Math.Clamp(booking.MatchNeededPlayers, 1, 20),
+            CostPerPerson = booking.MatchCostPerPerson,
+            Status = "Đang tuyển",
+            CreatedAtUtc = DateTime.UtcNow
+        };
     }
 
     private static ScheduledBookingViewModel Map(Booking x) => new()
@@ -87,13 +119,20 @@ public sealed class DatabaseBookingStore(SportMatchDbContext db) : IBookingStore
         SlotCount = x.SlotCount,
         Deposit = x.DepositAmount,
         OpenForMatchmaking = x.OpenForMatchmaking,
-        Status = x.Status == "Chờ thanh toán" && x.HoldExpiresAtUtc <= DateTime.UtcNow ? "Hết hạn" : x.Status,
+        MatchCode = x.MatchPost?.MatchCode,
+        Status = BookingLifecyclePolicy.DisplayStatus(x),
         HoldExpiresAtUtc = x.HoldExpiresAtUtc,
         CancellationReason = x.CancellationReason,
         RefundPercent = x.RefundPercent,
         RefundAmount = x.RefundAmount,
         RefundStatus = x.RefundStatus,
-        CanCancel = (x.Status == "Đã xác nhận" || (x.Status == "Chờ thanh toán" && x.HoldExpiresAtUtc > DateTime.UtcNow)) && BookingCancellationPolicy.StartAt(x) > DateTime.Now,
+        CanCancel = (x.Status == "Đã xác nhận" || (x.Status == "Chờ thanh toán" && x.HoldExpiresAtUtc > DateTime.UtcNow)) && BookingCancellationPolicy.CanCustomerCancel(x),
         EstimatedRefundPercent = BookingCancellationPolicy.RefundPercent(x)
+    };
+
+    private static string SportSlug(string name) => name switch
+    {
+        "Bóng đá mini" => "football", "Cầu lông" => "badminton", "Pickleball" => "pickleball",
+        "Bóng rổ" => "basketball", "Tennis" => "tennis", "Bóng chuyền" => "volleyball", _ => "other"
     };
 }

@@ -7,13 +7,14 @@
 <section class="admin-page shell">
     <div class="admin-heading"><div><span class="kicker">DỮ LIỆU SÂN</span><h1>Quản lý cụm sân</h1><p>Thông tin ở đây được dùng trực tiếp trên trang đặt sân của khách.</p></div><a class="primary-button" asp-action="CreateVenue">+ Thêm sân mới</a></div>
     @if (TempData["AdminMessage"] is string message) { <div class="admin-success">@message</div> }
+    @if (TempData["AdminError"] is string error) { <div class="admin-error">@error</div> }
     <div class="venue-admin-grid">
         @foreach (var venue in Model.Venues)
         {
             <article class="venue-admin-card">
                 <a class="edit-button" asp-action="Courts" asp-route-id="@venue.Id">Quản lý sân con &amp; khung giờ →</a>
                 @if (!string.IsNullOrWhiteSpace(venue.ImagePath)) { <img src="@venue.ImagePath" alt="Ảnh @venue.Name" /> } else { <div class="venue-admin-placeholder">SPORTMATCH</div> }
-                <div class="venue-admin-content"><span class="kicker">@venue.District.ToUpperInvariant()</span><h2>@venue.Name</h2><p>@venue.Address</p><div class="venue-admin-meta"><span>@venue.OpeningHours</span><span>@venue.CourtCount sân con</span><span>@string.Join(" · ", venue.Sports)</span></div><div class="venue-admin-footer"><span>@venue.PhoneNumber</span><a class="edit-button" asp-action="EditVenue" asp-route-id="@venue.Id">Chỉnh sửa</a></div></div>
+                <div class="venue-admin-content"><span class="kicker">@venue.District.ToUpperInvariant()</span><span class="admin-state @(venue.IsActive ? "active" : "inactive")">@(venue.IsActive ? "Đang hiển thị" : "Đang ẩn")</span><h2>@venue.Name</h2><p>@venue.Address</p><div class="venue-admin-meta"><span>@venue.OpeningHours</span><span>@venue.CourtCount sân con</span><span>@string.Join(" · ", venue.Sports)</span></div><div class="venue-admin-footer"><span>@venue.PhoneNumber</span><div class="admin-inline-actions"><a class="edit-button" asp-action="EditVenue" asp-route-id="@venue.Id">Chỉnh sửa</a><form asp-action="ToggleVenue" method="post"><input type="hidden" name="id" value="@venue.Id" /><button class="@(venue.IsActive ? "cancel-button" : "confirm-button")" type="submit">@(venue.IsActive ? "Ẩn sân" : "Hiện sân")</button></form></div></div></div>
             </article>
         }
     </div>

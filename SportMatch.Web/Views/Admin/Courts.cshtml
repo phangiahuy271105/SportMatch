@@ -1,6 +1,8 @@
 @model IReadOnlyList<AdminCourtViewModel>
 @{ Layout = "_AdminLayout"; ViewData["Title"] = "Sân con & khung giờ"; }
+@section Styles { <link rel="stylesheet" href="~/css/admin-courts.css" asp-append-version="true" /> }
 <section class="admin-page shell"><div class="admin-heading"><div><span class="kicker">SÂN CON &amp; KHUNG GIỜ</span><h1>@ViewData["VenueName"]</h1><a asp-action="Venues">← Danh sách cụm sân</a></div><a class="primary-button" asp-action="Court" asp-route-venueId="@ViewData["VenueId"]">+ Thêm sân con</a></div>
-<div class="admin-board admin-table-wrap"><table><thead><tr><th>Sân con</th><th>Môn / loại</th><th>Giờ thường</th><th>Giờ vàng</th><th></th></tr></thead><tbody>
-@foreach(var court in Model) { <tr><td>@court.Name</td><td>@court.SportName · @court.CourtType</td><td>@court.OffPeakPrice.ToString("N0")đ</td><td>@court.PeakPrice.ToString("N0")đ</td><td><a class="edit-button" asp-action="Court" asp-route-id="@court.Id" asp-route-venueId="@court.VenueComplexId">Sửa &amp; bật/tắt giờ</a></td></tr> }
+@if (TempData["AdminError"] is string error) { <div class="admin-error">@error</div> }
+<div class="admin-board admin-table-wrap"><table><thead><tr><th>Ảnh</th><th>Sân con</th><th>Môn / loại</th><th>Giờ thường</th><th>Giờ vàng</th><th></th></tr></thead><tbody>
+@foreach(var court in Model) { <tr><td>@if (!string.IsNullOrWhiteSpace(court.ImagePath)) { <img class="court-thumb" src="@court.ImagePath" alt="Ảnh @court.Name" /> }</td><td>@court.Name<br /><span class="admin-state @(court.IsActive ? "active" : "inactive")">@(court.IsActive ? "Đang hiển thị" : "Đang ẩn")</span></td><td>@court.SportName · @court.CourtType</td><td>@court.OffPeakPrice.ToString("N0")đ</td><td>@court.PeakPrice.ToString("N0")đ</td><td><div class="admin-inline-actions"><a class="edit-button" asp-action="Court" asp-route-id="@court.Id" asp-route-venueId="@court.VenueComplexId">Sửa</a><form asp-action="ToggleCourt" method="post"><input type="hidden" name="id" value="@court.Id" /><button class="@(court.IsActive ? "cancel-button" : "confirm-button")" type="submit">@(court.IsActive ? "Ẩn" : "Hiện")</button></form></div></td></tr> }
 </tbody></table></div></section>

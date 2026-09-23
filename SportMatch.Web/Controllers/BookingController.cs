@@ -33,7 +33,8 @@ public sealed class BookingController : Controller
             filter.Date = DateOnly.FromDateTime(DateTime.Today);
         }
 
-        var courtsQuery = _db.SportCourts.AsNoTracking().Include(x => x.VenueComplex).Include(x => x.TimeSlots).AsQueryable();
+        var courtsQuery = _db.SportCourts.AsNoTracking().Include(x => x.VenueComplex).Include(x => x.TimeSlots)
+            .Where(x => x.IsActive && x.VenueComplex!.IsActive).AsQueryable();
         if (filter.Sport != "all")
         {
             var sportName = SportNameFromSlug(filter.Sport);
@@ -132,6 +133,9 @@ public sealed class BookingController : Controller
             TotalAmount = totalAmount,
             DepositAmount = deposit,
             OpenForMatchmaking = request.OpenForMatchmaking,
+            MatchNeededPlayers = request.MatchNeededPlayers,
+            MatchLevel = request.MatchLevel,
+            MatchCostPerPerson = request.MatchCostPerPerson,
             Status = "Chờ thanh toán",
             CreatedAtUtc = DateTime.UtcNow,
             HoldExpiresAtUtc = expiresAt
@@ -211,12 +215,14 @@ public sealed class BookingController : Controller
         {
             Id = court.Id,
             Name = $"{court.VenueComplex!.Name} · {court.Name}",
+            VenueName = court.VenueComplex.Name,
+            CourtName = court.Name,
             Sport = SportSlug(court.SportName),
             SportName = court.SportName,
             District = court.VenueComplex.District,
             Address = court.VenueComplex.Address,
             VisualClass = visualClasses[(court.Id - 1) % visualClasses.Length],
-            ImagePath = court.VenueComplex.ImagePath,
+            ImagePath = court.ImagePath ?? court.VenueComplex.ImagePath,
             PricePerHour = court.OffPeakPrice,
             PeakPrice = court.PeakPrice,
             Rating = 5m,

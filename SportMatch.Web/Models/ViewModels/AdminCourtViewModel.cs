@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 namespace SportMatch.Web.Models.ViewModels;
 public sealed class AdminCourtViewModel
 {
@@ -9,6 +10,12 @@ public sealed class AdminCourtViewModel
     [Required, StringLength(30)] public string CourtType { get; set; } = "Tiêu chuẩn";
     [Range(0, 10000000)] public decimal OffPeakPrice { get; set; } = 180000;
     [Range(0, 10000000)] public decimal PeakPrice { get; set; } = 280000;
+    [Display(Name = "Ảnh sân con")] public IFormFile? Image { get; set; }
+    public string? ExistingImagePath { get; set; }
+    public string? ImagePath { get; set; }
+    public bool IsActive { get; set; } = true;
+    public bool RemoveImage { get; set; }
+    public bool HasOwnImage { get; set; }
     public List<int> ActiveSlots { get; set; } = [];
     public List<AdminSlotViewModel> Slots { get; set; } = [];
 }

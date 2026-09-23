@@ -1,1 +1,0 @@
-.venue-cancel-form{display:flex;gap:7px}.venue-cancel-form input{min-width:210px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:.7rem}@media(max-width:650px){.venue-cancel-form{width:100%;flex-direction:column}.venue-cancel-form input{min-width:0}}

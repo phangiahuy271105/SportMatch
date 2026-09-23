@@ -13,12 +13,14 @@ public sealed class ScheduleController : Controller
     private readonly IBookingStore _bookingStore;
     private readonly SportMatchDbContext _db;
     private readonly BookingAccess _access;
+    private readonly MatchAccess _matchAccess;
 
-    public ScheduleController(IBookingStore bookingStore, SportMatchDbContext db, BookingAccess access)
+    public ScheduleController(IBookingStore bookingStore, SportMatchDbContext db, BookingAccess access, MatchAccess matchAccess)
     {
         _bookingStore = bookingStore;
         _db = db;
         _access = access;
+        _matchAccess = matchAccess;
     }
 
     [HttpGet]
@@ -33,8 +35,12 @@ public sealed class ScheduleController : Controller
         foreach (var ownedCode in ownedCodes)
         {
             var booking = await _bookingStore.GetByCodeAsync(ownedCode);
-            if (booking is not null) bookings.Add(booking);
+            if (booking is not null)
+            {
+                bookings.Add(booking);
+            }
         }
+        _matchAccess.RememberHosts(HttpContext, bookings.Where(x => !string.IsNullOrWhiteSpace(x.MatchCode)).Select(x => x.MatchCode!));
         return View(new ScheduleIndexViewModel { Bookings = bookings });
     }
 
@@ -53,16 +59,16 @@ public sealed class ScheduleController : Controller
     public async Task<IActionResult> Cancel(string bookingCode, string reason)
     {
         if (!await _access.CanRead(HttpContext, bookingCode)) return NotFound();
-        var booking = await _db.Bookings.SingleOrDefaultAsync(x => x.BookingCode == bookingCode);
+        var booking = await _db.Bookings.Include(x => x.MatchPost).SingleOrDefaultAsync(x => x.BookingCode == bookingCode);
         if (booking is null) return NotFound();
         if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 5)
         {
             TempData["ScheduleError"] = "Vui lòng nhập lý do hủy rõ ràng.";
             return RedirectToAction(nameof(Index));
         }
-        if (BookingCancellationPolicy.StartAt(booking) <= DateTime.Now || booking.Status is not ("Đã xác nhận" or "Chờ thanh toán"))
+        if (!BookingCancellationPolicy.CanCustomerCancel(booking) || booking.Status is not ("Đã xác nhận" or "Chờ thanh toán"))
         {
-            TempData["ScheduleError"] = "Lịch này không còn đủ điều kiện gửi yêu cầu hủy.";
+            TempData["ScheduleError"] = "Chỉ có thể hủy trước giờ thi đấu ít nhất 12 tiếng.";
             return RedirectToAction(nameof(Index));
         }
         booking.CancellationReason = reason.Trim();
@@ -81,6 +87,7 @@ public sealed class ScheduleController : Controller
             booking.Status = "Yêu cầu hủy";
             TempData["ScheduleMessage"] = $"Đã gửi yêu cầu hủy. Mức hoàn dự kiến {booking.RefundPercent}%.";
         }
+        if (booking.MatchPost is not null && booking.Status == "Đã hủy") booking.MatchPost.Status = "Đã đóng";
         await _db.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }

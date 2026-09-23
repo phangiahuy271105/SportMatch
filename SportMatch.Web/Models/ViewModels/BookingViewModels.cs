@@ -34,6 +34,8 @@ public sealed class VenueCardViewModel
 {
     public int Id { get; init; }
     public required string Name { get; init; }
+    public required string VenueName { get; init; }
+    public required string CourtName { get; init; }
     public required string Sport { get; init; }
     public required string SportName { get; init; }
     public required string District { get; init; }
@@ -94,6 +96,15 @@ public sealed class CreateBookingViewModel
     public string? Email { get; set; }
 
     public bool OpenForMatchmaking { get; set; }
+
+    [Range(1, 20, ErrorMessage = "Số người cần thêm phải từ 1 đến 20.")]
+    public int MatchNeededPlayers { get; set; } = 2;
+
+    [RegularExpression("^(Casual|Intermediate|Competitive)$", ErrorMessage = "Trình độ kèo không hợp lệ.")]
+    public string MatchLevel { get; set; } = "Intermediate";
+
+    [Range(typeof(decimal), "0", "1000000", ErrorMessage = "Chi phí mỗi người không hợp lệ.")]
+    public decimal MatchCostPerPerson { get; set; }
 
     [Range(typeof(bool), "true", "true", ErrorMessage = "Bạn cần đồng ý điều khoản và chính sách trước khi đặt sân.")]
     public bool AcceptPolicy { get; set; }

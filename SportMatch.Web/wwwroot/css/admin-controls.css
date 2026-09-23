@@ -1,0 +1,7 @@
+.admin-state { display: inline-block; margin-top: 5px; padding: 4px 7px; border-radius: 7px; font-size: .63rem; font-weight: 700; }
+.admin-state.active { background: #e8faf2; color: #128354; }
+.admin-state.inactive { background: #fff0f0; color: #b83d3d; }
+.admin-inline-actions { display: flex; align-items: center; gap: 8px; }
+.admin-inline-actions form { margin: 0; }
+.remove-image-option { display: flex; align-items: center; gap: 7px; margin-top: 5px; color: #b23d3d; font-size: .7rem; }
+.remove-image-option input { width: 16px; height: 16px; }

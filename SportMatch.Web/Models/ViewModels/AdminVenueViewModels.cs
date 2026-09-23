@@ -17,6 +17,7 @@ public sealed class AdminVenueRowViewModel
     public required string PhoneNumber { get; init; }
     public required string OpeningHours { get; init; }
     public string? ImagePath { get; init; }
+    public bool IsActive { get; init; }
     public int CourtCount { get; init; }
     public IReadOnlyList<string> Sports { get; init; } = [];
 }
@@ -67,6 +68,7 @@ public sealed class AdminVenueFormViewModel
     [Display(Name = "Ảnh đại diện")]
     public IFormFile? Image { get; set; }
     public string? ExistingImagePath { get; set; }
+    public bool RemoveImage { get; set; }
 
     [Required(ErrorMessage = "Vui lòng nhập tên sân con.")]
     [StringLength(100)]

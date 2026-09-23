@@ -24,10 +24,13 @@ public sealed class SportMatchDbContext(DbContextOptions<SportMatchDbContext> op
         builder.Entity<Booking>().Property(x => x.TotalAmount).HasPrecision(18, 0);
         builder.Entity<Booking>().Property(x => x.DepositAmount).HasPrecision(18, 0);
         builder.Entity<Booking>().Property(x => x.RefundAmount).HasPrecision(18, 0);
+        builder.Entity<Booking>().Property(x => x.MatchCostPerPerson).HasPrecision(18, 0);
         builder.Entity<SportCourt>().Property(x => x.OffPeakPrice).HasPrecision(18, 0);
         builder.Entity<SportCourt>().Property(x => x.PeakPrice).HasPrecision(18, 0);
         builder.Entity<ApplicationUser>().Property(x => x.TrustScore).HasPrecision(3, 1);
         builder.Entity<MatchPost>().HasIndex(x => x.MatchCode).IsUnique();
+        builder.Entity<MatchPost>().HasIndex(x => x.SourceBookingId).IsUnique().HasFilter("[SourceBookingId] IS NOT NULL");
+        builder.Entity<MatchPost>().HasOne(x => x.SourceBooking).WithOne(x => x.MatchPost).HasForeignKey<MatchPost>(x => x.SourceBookingId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<MatchPost>().Property(x => x.CostPerPerson).HasPrecision(18, 0);
         builder.Entity<MatchJoinRequest>().HasIndex(x => x.RequestCode).IsUnique();
         builder.Entity<MatchJoinRequest>().HasIndex(x => x.PaymentTransactionId).IsUnique().HasFilter("[PaymentTransactionId] IS NOT NULL");
